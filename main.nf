@@ -27,6 +27,7 @@ params.max_cohort_ac = 'Inf'
 params.min_impact = 'MODERATE'
 params.exclude_benign_missense = true
 params.include_sv_csv = true
+params.variants_override = null // disable filtering and report specific set of variants by id in TSV file
 
 // ref params
 params.ref_fasta = ''

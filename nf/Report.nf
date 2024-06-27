@@ -100,6 +100,7 @@ process cavalier {
     tuple val(set), val(fam), path(vcf), path(ped), val(sam), path(bam), path(bai)
     path lists
     path cache_dir
+    path variants_override
     
 
     output:
@@ -110,14 +111,15 @@ process cavalier {
     pref = "$fam.$set"
     sam_bam = [sam, bam instanceof List ? bam: [bam]]
         .transpose().collect {it.join('=') }.join(' ')
-    flags =(
+    optional =(
         (set == 'SV' ? ['--sv']: []) +
         (params.exclude_benign_missense ? ['--exclude-benign-missense']: []) +
         (params.include_sv_csv ? ['--include-sv-csv']: []) +
         (params.no_slides ? ['--no-slides']: [])
+        (variants_override.name != 'VARIANTS_OVERRIDE': ["--variants-override $variants_override"] : [])
     ).join(' ')
     """
-    cavalier_wrapper.R $vcf $ped $sam_bam $flags \\
+    cavalier_wrapper.R $vcf $ped $sam_bam $optional \\
         --out $pref \\
         --family $fam \\
         --caller $params.snp_caller \\

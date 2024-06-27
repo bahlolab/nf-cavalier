@@ -98,6 +98,10 @@ def ref_data_channel() {
     Channel.value([ref_fa, ref_fai, gaps, vep_cache])
 }
 
+def get_variants_override() {
+    params.variants_override ? path(params.variants_override) : path("$projectDir/data/dummy/VARIANTS_OVERRIDE")
+}
+
 def vcf_channel() {
     if (!params.snp_vcf & !params.sv_vcf){
         throw new Exception("ERROR: Must specify at least one of 'params.snp_vcf' or 'params.sv_vcf'")
