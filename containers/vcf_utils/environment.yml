@@ -5,4 +5,4 @@ channels:
 dependencies:
     - bcftools
     - pysam
-    - ensembl-vep=110.1
+    - ensembl-vep=112
