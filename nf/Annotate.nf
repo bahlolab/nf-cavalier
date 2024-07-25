@@ -18,12 +18,7 @@ workflow Annotate {
             filter { it[0] == 'SNP' } |
             map { it[0..3] } |
             combine(ref_data) |
-            vep |
-            flatMap {
-                [['SNP', 'vep', it[1]],
-                 ['SNP', 'vep-modifier', it[2]],
-                 ['SNP', 'unannotated', it[3]]]
-            }
+            vep
     } else {
         snp_ann = Channel.fromList([])
     }
@@ -51,12 +46,7 @@ workflow Annotate {
             combine(pop_sv_split, by:0) |
             map { it.drop(1) } |
             combine(ref_data) |
-            vep_sv |
-            flatMap {
-                [[it[0], 'vep', it[1]],
-                 [it[0], 'unannotated', it[2]]]
-            }
-
+            vep_sv
     } else {
         sv_ann = Channel.fromList([])
     }
@@ -64,21 +54,18 @@ workflow Annotate {
     ann_vcfs = snp_ann |
         mix(sv_ann) |
         collectFile(newLine: true, sort: { new File(it).toPath().fileName.toString() }) {
-            ["${it[0]}.${it[1]}.files.txt", it[2].toString()]
+            ["${it[0]}.files.txt", it[1].toString()]
         } |
-        map { (it.name =~ /([^.]+)\.([^.]+)\.files\.txt/)[0][1..2] + [it] } |
+        map { [(it.name =~ /([^.]+)\.files\.txt/)[0][1]] + [it] } |
         vcf_concat_1 |
-        filter { it[1] == 'vep' } |
-        map { it[0, 2, 3] } |
         branch { snp: it[0] == 'SNP'; sv: true }
 
     output = ann_vcfs.sv |
         collectFile(newLine: true, sort: { new File(it).toPath().fileName.toString() }) {
             ["SV.files.txt", it[1].toString()]
         } |
-        map { ['SV', 'vep', it] } |
+        map { ['SV', it] } |
         vcf_concat_sv |
-        map { it[0, 2, 3] } |
         mix(ann_vcfs.snp)
 
     emit: output // set, vcf, index
