@@ -97,7 +97,7 @@ process vep_sv {
         bcftools view --no-version -i "INFO/CSQ ~ '.'" -Ob -o $vep_bcf
     
     NIN=\$(bcftools view --threads $task.cpus -H $bcf | wc -l)
-    NLONG=\$( (grep 'is too long to annotate' STDOUT_warnings.txt ||:) | wc -l )
+    NLONG=\$( (grep 'too long to annotate\\|looks incomplete' STDOUT_warnings.txt ||:) | wc -l )
     NIN=\$((NIN - NLONG))
     NOUT=\$(bcftools view --threads $task.cpus -H $vep_bcf | wc -l)
     if [[ "\$NIN" != "\$NOUT" ]]; then
