@@ -541,52 +541,52 @@ FILTER_SHORT_TYPE <- function(VARIANTS) {
     getOption('FILTER_SHORT_VEP_CONSEQUENCES', '') %>% 
     str_split(',', simplify = T) %>% 
     c()
-  
+
   VARIANTS_OUT <-
-    VARIANTS %>% 
-    filter(!replace_na(str_detect(CLNSIG, FILTER_SHORT_CLINVAR_DISC_PAT), FALSE)) %>% 
-    mutate(
-      TYPE = case_when(
-        ############## LOF #############  
-        (
-          FILTER_SHORT_LOF &
-            IMPACT == 'HIGH'
-        ) ~ 'LOF',
-        ########### MISSENSE ########### 
-        (
-          FILTER_SHORT_MISSENSE &
-            str_detect(Consequence, "missense")
-        ) ~ 'MISSENSE',
-        ############# SPLICING ########### 
-        (
-          FILTER_SHORT_SPLICING & 
-            (
-              SpliceAI_max >= getOption('FILTER_SHORT_MIN_SPLICEAI_PP', -Inf) |
-                (
-                  str_detect(Consequence, "splice") &
-                    IMPACT == 'MODERATE'
-                ) 
-            )
-        ) ~ 'SPLICING',
-        (
-          FILTER_SHORT_PROMOTER &
-            promoterAI <= getOption('FILTER_SHORT_MAX_PROMOTERAI', Inf)
-        ) ~ 'PROMOTER',
-        ############# OTHER ############# 
-        # Captures anything else
-        (
-          FILTER_SHORT_OTHER &
-            (
-              IMPACT %in% FILTER_SHORT_VEP_IMPACTS |
-                Consequence %in% FILTER_SHORT_VEP_CONSEQUENCES |
-                str_detect(CLNSIG, FILTER_SHORT_CLINVAR_KEEP_PAT) |
-                CADD > getOption("FILTER_SHORT_MIN_CADD_PP", -Inf)
-            )
-        ) ~ 'OTHER'
-      )
-    ) %>% 
-    filter(!is.na(TYPE))
-  
+  VARIANTS %>% 
+  filter(!replace_na(str_detect(CLNSIG, FILTER_SHORT_CLINVAR_DISC_PAT), FALSE)) %>% 
+  mutate(
+    TYPE = case_when(
+      ############# SPLICING ########### 
+      (
+        FILTER_SHORT_SPLICING & 
+          (
+            SpliceAI_max >= getOption('FILTER_SHORT_MIN_SPLICEAI_PP', -Inf) |
+              (
+                str_detect(Consequence, "splice") &
+                  IMPACT %in% c('MODERATE', 'HIGH')
+              ) 
+          )
+      ) ~ 'SPLICING',
+      ############## LOF #############  
+      (
+        FILTER_SHORT_LOF &
+          IMPACT == 'HIGH'
+      ) ~ 'LOF',
+      ########### MISSENSE ########### 
+      (
+        FILTER_SHORT_MISSENSE &
+          str_detect(Consequence, "missense")
+      ) ~ 'MISSENSE',
+      (
+        FILTER_SHORT_PROMOTER &
+          promoterAI <= getOption('FILTER_SHORT_MAX_PROMOTERAI', Inf)
+      ) ~ 'PROMOTER',
+      ############# OTHER ############# 
+      # Captures anything else
+      (
+        FILTER_SHORT_OTHER &
+          (
+            IMPACT %in% FILTER_SHORT_VEP_IMPACTS |
+              Consequence %in% FILTER_SHORT_VEP_CONSEQUENCES |
+              str_detect(CLNSIG, FILTER_SHORT_CLINVAR_KEEP_PAT) |
+              CADD > getOption("FILTER_SHORT_MIN_CADD_PP", -Inf)
+          )
+      ) ~ 'OTHER'
+    )
+  ) %>% 
+  filter(!is.na(TYPE))
+   
   return(
     VARIANTS_OUT %>% TRACK_REASON('FILTER_SHORT_TYPE')
   )
