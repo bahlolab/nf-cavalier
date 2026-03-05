@@ -26,20 +26,22 @@ variants <-
   select(all_of(default_cols), everything()) %>%
   group_by(family_id) %>% 
   mutate(
-    pdf    = file.path('by_family', family_id, str_c(family_id, '.pdf')),
+    pdf  = file.path('by_family', family_id, 'varslides', str_c('.*', variant_id, '.*.pdf'))  %>% 
+      map_chr(~ first(list.files(dirname(.), pattern = basename(.), full.names = T))),
     html   = file.path('by_family', family_id, str_c(family_id, '.igv_report.html')),
     row_id = row_number() - 1L
   ) %>% 
   ungroup()
 
 default_cols_struc <-
-  c('family_id', 'SYMBOL', 'CHROM', 'POS', 'END', 'SVTYPE', 'Consequence', 'IMPACT', 'Max_AF')
+  c('family_id', 'SYMBOL', 'CHROM', 'POS', 'END', 'SVTYPE', 'SVLEN', 'Consequence', 'IMPACT', 'Max_AF')
 
 struc_variants <-
   read_csv('struc_candidates.csv')  %>%
   select(all_of(default_cols_struc), everything()) %>%
   mutate(
-    pdf     = file.path('by_family', family_id, str_c(family_id, '.pdf')),
+    pdf  = file.path('by_family', family_id, 'varslides', str_c('.*', variant_id, '.*.pdf'))  %>% 
+      map_chr(~ first(list.files(dirname(.), pattern = basename(.), full.names = T))),
     samplot = file.path('by_family', family_id, 'samplot', str_c('samplot_', family_id, '_', variant_id,  '.png')),
     svpv    = file.path('by_family', family_id, 'svpv', family_id, SVTYPE, str_c(CHROM, '_', POS),
                         str_c(CHROM, POS, SVTYPE, '*.pdf', sep = '.')) %>%
@@ -189,15 +191,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; }
   display: flex;
   align-items: center;
   gap: 14px;
-}
-#app-header::before {
-  content: '';
-  display: inline-block;
-  width: 5px;
-  height: 28px;
-  background: #ECE953;
-  border-radius: 3px;
-  flex-shrink: 0;
+  border-radius: 4px;
 }
 #app-title {
   font-size: 22px;

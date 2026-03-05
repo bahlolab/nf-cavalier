@@ -26,6 +26,7 @@ include { PPT_TO_PDF  } from '../../modules/local/ppt_to_pdf'
 include { PDF_UNITE   } from '../../modules/local/pdf_unite.nf'
 include { PDF_COPY    } from '../../modules/local/pdf_copy.nf'
 include { PDF_SPLIT   } from '../../modules/local/pdf_split.nf'
+include { VARVIEWER   } from '../../modules/local/varviewer.nf'
 
 workflow CAVALIER {
     take:
@@ -194,7 +195,7 @@ workflow CAVALIER {
 
         by_gene = 
             PDF_SPLIT.out.flatten()
-            .map  { [(it.name =~ /([^.]+)\.pdf/)[0][1], it] }
+            .map  { [(it.name =~ /__([^.]+)__/)[0][1], it] }
             .groupTuple()
 
         PDF_UNITE(
@@ -210,6 +211,12 @@ workflow CAVALIER {
             .toSortedList { it[0] }
             .map { "SYMBOL,n_samples\n" + it.collect { it.join(',') }.join('\n') }
             .collectFile(name: 'by_gene_counts.csv',storeDir: "${params.outdir}")
+
+        VARVIEWER(
+            PDF_SPLIT.out.last().map { true },
+            path("${projectDir}/bin/variant_viewer.Rmd"),
+            path("${params.outdir}")
+        )
     }
 
     /* ----- Save CSV results ----- */
