@@ -1,0 +1,409 @@
+
+```{r include=FALSE}
+library(tidyverse)
+library(DT)
+
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+```{=html}
+<div id="app-header">
+  <span id="app-title">CAVALIER Variant Viewer</span>
+</div>
+```
+
+```{r include=FALSE}
+
+default_cols <-
+  c('family_id', 'SYMBOL', 'CHROM', 'POS', 'REF', 'ALT', 'Consequence', 'IMPACT', 'gnomad_AF', 'CADD')
+
+variants <-
+  read_csv('short_candidates.csv') %>% 
+  select(all_of(default_cols), everything()) %>%
+  group_by(family_id) %>% 
+  mutate(
+    pdf    = file.path('by_family', family_id, str_c(family_id, '.pdf')),
+    html   = file.path('by_family', family_id, str_c(family_id, '.igv_report.html')),
+    row_id = row_number() - 1L
+  ) %>% 
+  ungroup()
+
+default_cols_struc <-
+  c('family_id', 'SYMBOL', 'CHROM', 'POS', 'END', 'SVTYPE', 'Consequence', 'IMPACT', 'Max_AF')
+
+struc_variants <-
+  read_csv('struc_candidates.csv')  %>%
+  select(all_of(default_cols_struc), everything()) %>%
+  mutate(
+    pdf     = file.path('by_family', family_id, str_c(family_id, '.pdf')),
+    samplot = file.path('by_family', family_id, 'samplot', str_c('samplot_', family_id, '_', variant_id,  '.png')),
+    svpv    = file.path('by_family', family_id, 'svpv', family_id, SVTYPE, str_c(CHROM, '_', POS),
+                        str_c(CHROM, POS, SVTYPE, '*.pdf', sep = '.')) %>%
+      map_chr(~ first(list.files(dirname(.), pattern = basename(.), full.names = T) )),
+  )
+
+# Build columnDefs and ColVis targets for a dataframe with n_default visible cols
+# and 3 trailing internal cols (hidden, excluded from ColVis)
+dt_coldefs <- function(df, n_default) {
+  n        <- ncol(df)
+  internal <- (n - 3):(n - 1)
+  extra    <- if (n > n_default + 3) n_default:(n - 4) else integer(0)
+  defs     <- list(list(visible = FALSE, targets = internal))
+  if (length(extra) > 0) defs <- c(defs, list(list(visible = FALSE, targets = extra)))
+  list(col_defs = defs, colvis_targets = 0:(n - 4))
+}
+
+```
+
+```{=html}
+<div id="vtype-container" class="vtype-container">
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="vtab-short">Short Variants</button>
+    <button class="tab-btn"        data-tab="vtab-struc">Structural Variants</button>
+  </div>
+  <div id="tab-vtab-short" class="tab-panel active" style="padding:12px;">
+```
+
+```{r echo=FALSE}
+cd <- dt_coldefs(variants, length(default_cols))
+datatable(
+  variants %>% mutate(across(where(~ is.character(.) && n_distinct(.) <= 10), as.factor)),
+  escape = FALSE, selection = "none", rownames = FALSE,
+  filter = 'top', extensions = "Buttons",
+  options = list(
+    pageLength = 10, dom = 'Blfrtip', autoWidth = FALSE,
+    buttons = list(list(extend = 'colvis', columns = cd$colvis_targets)),
+    columnDefs = cd$col_defs,
+    rowCallback = JS("
+      function(row, data) {
+        var n = data.length;
+        $(row).attr('data-pdf',    data[n-3]);
+        $(row).attr('data-html',   data[n-2]);
+        $(row).attr('data-row-id', data[n-1]);
+        $(row).css('cursor', 'pointer');
+      }
+    ")
+  ),
+  callback = JS("
+    table.on('click', 'tbody tr', function() {
+      table.$('tr.selected-row').removeClass('selected-row');
+      $(this).addClass('selected-row');
+      loadSample($(this).data('pdf'), $(this).data('html'), Number($(this).data('row-id')));
+    });
+    $(table.table().body()).find('tr:first').trigger('click');
+  ")
+)
+```
+
+```{=html}
+  </div>
+  <div id="tab-vtab-struc" class="tab-panel active" style="padding:12px;">
+```
+
+```{r echo=FALSE}
+cd_s <- dt_coldefs(struc_variants, length(default_cols_struc))
+datatable(
+  struc_variants %>% mutate(across(where(~ is.character(.) && n_distinct(.) <= 10), as.factor)),
+  escape = FALSE, selection = "none", rownames = FALSE,
+  filter = 'top', extensions = "Buttons",
+  options = list(
+    pageLength = 10, dom = 'Blfrtip', autoWidth = FALSE,
+    buttons = list(list(extend = 'colvis', columns = cd_s$colvis_targets)),
+    columnDefs = cd_s$col_defs,
+    rowCallback = JS("
+      function(row, data) {
+        var n = data.length;
+        $(row).attr('data-pdf',     data[n-3]);
+        $(row).attr('data-samplot', data[n-2]);
+        $(row).attr('data-svpv',    data[n-1]);
+        $(row).css('cursor', 'pointer');
+      }
+    ")
+  ),
+  callback = JS("
+    table.on('click', 'tbody tr', function() {
+      table.$('tr.selected-row').removeClass('selected-row');
+      $(this).addClass('selected-row');
+      loadStrucSample($(this).data('pdf'), $(this).data('samplot'), $(this).data('svpv'));
+    });
+  ")
+)
+```
+
+```{=html}
+  </div>
+</div>
+```
+
+```{=html}
+<div style="margin-top: 28px;">
+
+  <div id="viewer-short" class="viewer-container" style="display:none;">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="slides">Slides</button>
+      <button class="tab-btn"        data-tab="igv">IGV</button>
+    </div>
+    <div id="tab-slides" class="tab-panel active">
+      <iframe id="viewer-pdf" width="100%" height="800px" style="border:none;"></iframe>
+    </div>
+    <div id="tab-igv" class="tab-panel">
+      <iframe id="viewer-igv" width="100%" height="800px" style="border:none;"></iframe>
+    </div>
+  </div>
+
+  <div id="viewer-struc" class="viewer-container" style="display:none;">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="struc-slides">Slides</button>
+      <button class="tab-btn"        data-tab="samplot">SAMPLOT</button>
+      <button class="tab-btn"        data-tab="svpv">SVPV</button>
+    </div>
+    <div id="tab-struc-slides" class="tab-panel active">
+      <iframe id="viewer-struc-pdf" width="100%" height="800px" style="border:none;"></iframe>
+    </div>
+    <div id="tab-samplot" class="tab-panel">
+      <img id="viewer-samplot" width="100%" style="display:block;">
+    </div>
+    <div id="tab-svpv" class="tab-panel">
+      <iframe id="viewer-svpv" width="100%" height="800px" style="border:none;"></iframe>
+    </div>
+  </div>
+
+</div>
+```
+
+<style>
+/* ── Global ── */
+body { font-family: 'Segoe UI', system-ui, sans-serif; }
+
+/* ── Header ── */
+#app-header {
+  background-color: #49A942;
+  color: white;
+  padding: 14px 28px;
+  margin-bottom: 28px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+#app-header::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 28px;
+  background: #ECE953;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+#app-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: white;
+}
+
+/* ── DataTable ── */
+table.dataTable tbody tr       { transition: background 0.12s; }
+table.dataTable tbody tr:hover td { background-color: #f0faf0 !important; }
+tr.selected-row td             { background-color: #d6f0d5 !important; }
+table.dataTable thead th       { background-color: #f6f6f6; border-bottom: 2px solid #49A942 !important; }
+table.dataTable td, table.dataTable th {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── ColVis / Buttons ── */
+.dt-buttons .dt-button {
+  background: #2372B9 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 5px 14px !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
+  transition: background 0.15s !important;
+}
+.dt-buttons .dt-button:hover { background: #1a5899 !important; }
+
+/* ── Containers (vtype + viewer) ── */
+.vtype-container, .viewer-container {
+  border: 1px solid #dee2e6;
+  border-radius: 0 6px 6px 6px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+.vtype-container  { margin-bottom: 28px; }
+.viewer-container { overflow: hidden; }
+
+/* ── Tab bar ── */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid #49A942;
+  background: #f4f4f4;
+  padding: 8px 8px 0;
+  margin-bottom: 0;
+}
+.tab-btn {
+  padding: 8px 24px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  position: relative;
+  bottom: -2px;
+  transition: color 0.15s, background 0.15s;
+}
+.tab-btn:hover:not(.active) { background: #e4e4e4; color: #333; }
+.tab-btn.active {
+  background: white;
+  border-color: #49A942;
+  color: #2372B9;
+  font-weight: 600;
+}
+.tab-panel        { display: none; }
+.tab-panel.active { display: block; }
+
+.container      { width: 100% !important; max-width: 100% !important; }
+.main-container { width: 95% !important; max-width: 95% !important; }
+</style>
+
+<script>
+var _pendingIgv       = null;
+var _pendingSvpv      = null;
+var _pdfTimeout       = null;
+var _strucPdfTimeout  = null;
+var _igvAbortCtrl     = null;
+var _activeTabs  = { 'vtype-container': 'vtab-short', 'viewer-short': 'slides', 'viewer-struc': 'struc-slides' };
+
+// Both panels start visible so DataTables can measure column widths during init.
+// After DT's $(document).ready() has run, hide the struc panel.
+$(document).ready(function() {
+  document.getElementById('tab-vtab-struc').classList.remove('active');
+});
+
+function switchTab(container, tab) {
+  container.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  container.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  container.querySelector('[data-tab="' + tab + '"]').classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// All tab switching
+document.addEventListener('click', function(e) {
+  if (!e.target.matches('.tab-btn')) return;
+  var tab       = e.target.getAttribute('data-tab');
+  var container = e.target.closest('.viewer-container, .vtype-container');
+  _activeTabs[container.id] = tab;
+  switchTab(container, tab);
+
+  // Vtype tab: reset viewers and auto-select first row
+  if (tab === 'vtab-short' || tab === 'vtab-struc') {
+    document.getElementById('viewer-short').style.display = 'none';
+    document.getElementById('viewer-struc').style.display = 'none';
+    var panelId = 'tab-' + tab;
+    $('#' + panelId + ' table tbody tr:first').trigger('click');
+    return;
+  }
+
+  // Viewer tab lazy loads
+  if (tab === 'igv' && _pendingIgv) {
+    loadSubsettedIframe(_pendingIgv.htmlUrl, _pendingIgv.rowId, 'viewer-igv');
+    _pendingIgv = null;
+  }
+  if (tab === 'svpv' && _pendingSvpv) {
+    document.getElementById('viewer-svpv').src = _pendingSvpv;
+    _pendingSvpv = null;
+  }
+});
+
+function loadSample(pdfUrl, htmlUrl, rowId) {
+  document.getElementById('viewer-short').style.display = 'block';
+
+  var pdfIframe = document.getElementById('viewer-pdf');
+  pdfIframe.removeAttribute('srcdoc');
+  pdfIframe.src = '';
+  clearTimeout(_pdfTimeout);
+  _pdfTimeout = setTimeout(function() { pdfIframe.src = pdfUrl; }, 50);
+
+  var igvIframe = document.getElementById('viewer-igv');
+  igvIframe.removeAttribute('srcdoc');
+  igvIframe.src = '';
+
+  var activeTab = _activeTabs['viewer-short'];
+  if (activeTab === 'igv') {
+    loadSubsettedIframe(htmlUrl, rowId, 'viewer-igv');
+    _pendingIgv = null;
+  } else {
+    _pendingIgv = { htmlUrl: htmlUrl, rowId: rowId };
+  }
+  switchTab(document.getElementById('viewer-short'), activeTab);
+}
+
+function loadStrucSample(pdfUrl, samplotUrl, svpvUrl) {
+  document.getElementById('viewer-struc').style.display = 'block';
+
+  var strucPdfIframe = document.getElementById('viewer-struc-pdf');
+  strucPdfIframe.src = '';
+  clearTimeout(_strucPdfTimeout);
+  _strucPdfTimeout = setTimeout(function() { strucPdfIframe.src = pdfUrl; }, 50);
+
+  document.getElementById('viewer-samplot').src = samplotUrl;
+
+  var svpvIframe = document.getElementById('viewer-svpv');
+  svpvIframe.src = '';
+  var activeTab = _activeTabs['viewer-struc'];
+  if (activeTab === 'svpv') {
+    svpvIframe.src = svpvUrl;
+    _pendingSvpv = null;
+  } else {
+    _pendingSvpv = svpvUrl;
+  }
+  switchTab(document.getElementById('viewer-struc'), activeTab);
+}
+
+async function loadSubsettedIframe(htmlUrl, keepId, iframeId) {
+  if (_igvAbortCtrl) _igvAbortCtrl.abort();
+  _igvAbortCtrl = new AbortController();
+  const signal = _igvAbortCtrl.signal;
+
+  let html;
+  try {
+    html = await fetch(htmlUrl, { signal }).then(r => r.text());
+  } catch (e) {
+    if (e.name === 'AbortError') return;
+    throw e;
+  }
+
+  // Subset and reindex tableJson rows
+  html = html.replace(
+    /("rows"\s*:\s*\[)(\[[\s\S]*?\])(\s*\]\s*\})/,
+    function(_, prefix, rows, suffix) {
+      const match   = rows.match(new RegExp('\\[' + keepId + ',[^\\]]*\\]'));
+      const cleaned = match ? match[0].replace(/^\[\d+,/, '[0,') : '';
+      return prefix + cleaned + suffix;
+    }
+  );
+
+  // Subset and reindex sessionDictionary
+  html = html.replace(
+    /(const sessionDictionary\s*=\s*\{)([^<]*?)(\s*\})/,
+    function(_, prefix, body, suffix) {
+      const match   = body.match(new RegExp('"' + keepId + '"\\s*:\\s*"data:[^"]*"'));
+      const cleaned = match ? '"0": ' + match[0].replace(/^"\d+"\s*:\s*/, '') : '';
+      return prefix + cleaned + suffix;
+    }
+  );
+
+  document.getElementById(iframeId).srcdoc = html;
+}
+</script>
