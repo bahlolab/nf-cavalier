@@ -395,17 +395,15 @@ MAIN <- function(opts) {
       tibble(png = samplots) %>% 
       tidyr::extract(
         png,
-        into = c("CHROM", "POS", "SVTYPE", "SVLEN"),
-        regex = "_([^\\._]+)-([0-9]+)-([^\\.]+)-([_0-9]+)\\.png",
+        into = c("variant_id"),
+        regex = "[^\\.]+\\.([^\\.]+)\\.png",
         remove = FALSE
       ) %>% 
-      mutate(POS = as.numeric(POS), SVLEN = as.numeric(SVLEN)) %>% 
       inner_join(
         struc_cand %>% 
-          select(CHROM, POS, SVTYPE, SVLEN, variant_id) %>% 
-          mutate(SVLEN = abs(SVLEN)) %>% 
+          select(variant_id) %>% 
           distinct(),
-        by = join_by(CHROM, POS, SVTYPE, SVLEN)
+        by = join_by(variant_id)
       ) %>% 
       transmute(
         id = 'x',

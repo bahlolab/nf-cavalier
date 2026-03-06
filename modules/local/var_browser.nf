@@ -17,11 +17,10 @@ process VAR_BROWSER {
 
 
     output:
-    path "variant_viewer.html"
+    path "variant_browser.html"
 
     script:
     """
-    echo $svpv
     Rscript -e "rmarkdown::render('$rmd')"
     """
 }

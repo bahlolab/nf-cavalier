@@ -27,6 +27,9 @@ dt_coldefs <- function(df, n_default, n_internal = 3) {
 ```{=html}
 <div id="app-header">
   <span id="app-title">CAVALIER Variant Browser</span>
+  <div id="app-logo-wrap">
+    <img src="https://www.wehi.edu.au/wp-content/uploads/2023/12/logo@2x-compressed.png" id="app-logo" alt="WEHI logo">
+  </div>
 </div>
 
 <div id="vtype-container" class="vtype-container">
@@ -36,22 +39,49 @@ dt_coldefs <- function(df, n_default, n_internal = 3) {
   </div>
   <div id="tab-vtab-short" class="tab-panel active" style="padding:12px;">
 ```
+
 ```{r load_short, include=FALSE}
 default_cols <-
-  c('family_id', 'SYMBOL', 'CHROM', 'POS', 'REF', 'ALT', 'Consequence', 'IMPACT', 'gnomad_AF', 'CADD')
+  c('family_id', 'SYMBOL', 'CHROM', 'POS', 'REF', 'ALT', 'Consequence', 'IMPACT', 'CLNSIG', 'gnomad_AF', 'CADD')
 
 variants <-
   read_csv('short_candidates.csv') %>%
   select(all_of(default_cols), everything()) %>%
-  group_by(family_id) %>%
+  left_join(
+    read_tsv('slides.txt', col_names = 'pdf') %>% 
+      tidyr::extract(
+        pdf,
+        into = c("family_id", "variant_id"),
+        regex = "^([^\\.]+).+\\.([^\\.]+)\\.pdf",
+        remove = FALSE
+      ) %>% 
+      mutate(
+        pdf = file.path('by_family', family_id, 'varslides', pdf)
+      ),
+    by = join_by(family_id, variant_id)
+  ) %>% 
+  left_join(
+    read_tsv('igv_report.txt', col_names = 'igv') %>% 
+      tidyr::extract(
+        igv,
+        into = c("family_id"),
+        regex = "^([^\\.]+)\\.",
+        remove = FALSE
+      ) %>% 
+      mutate(
+        igv = file.path('by_family', family_id, igv)
+      ),
+    by = join_by(family_id)
+  ) %>% 
+  group_by(family_id) %>% 
   mutate(
-    pdf  = file.path('by_family', family_id, 'varslides', str_c('.*', variant_id, '.*.pdf'))  %>%
-      map_chr(~ first(list.files(dirname(.), pattern = basename(.), full.names = T))),
-    html   = file.path('by_family', family_id, str_c(family_id, '.igv_report.html')),
     row_id = row_number() - 1L
   ) %>%
   ungroup() %>%
   mutate(
+    spliceai_url = str_c(
+      "https://spliceailookup.broadinstitute.org/#hg=38&variant=", URLencode(variant_id)
+    ),
     ucsc_url = {
       track <- str_c(
         'track name="', VARIANT_CLASS, '" visibility=2 color=0,0,255\n',
@@ -66,7 +96,7 @@ variants <-
     ucsc_render_url = str_replace(ucsc_url, 'hgTracks', 'hgRenderTracks')
   )
 
-cd <- dt_coldefs(variants, length(default_cols), n_internal = 5)
+cd <- dt_coldefs(variants, length(default_cols), n_internal = 6)
 ```
 
 ```{r show_short, echo=FALSE}
@@ -81,9 +111,10 @@ datatable(
     rowCallback = JS("
       function(row, data) {
         var n = data.length;
-        $(row).attr('data-pdf',             data[n-5]);
-        $(row).attr('data-html',            data[n-4]);
-        $(row).attr('data-row-id',          data[n-3]);
+        $(row).attr('data-pdf',             data[n-6]);
+        $(row).attr('data-html',            data[n-5]);
+        $(row).attr('data-row-id',          data[n-4]);
+        $(row).attr('data-spliceai-url',    data[n-3]);
         $(row).attr('data-ucsc-url',        data[n-2]);
         $(row).attr('data-ucsc-render-url', data[n-1]);
         $(row).css('cursor', 'pointer');
@@ -96,7 +127,7 @@ datatable(
       $(this).addClass('selected-row');
       loadSample(
         $(this).data('pdf'), $(this).data('html'), Number($(this).data('row-id')),
-        $(this).data('ucsc-url'), $(this).data('ucsc-render-url')
+        $(this).data('spliceai-url'), $(this).data('ucsc-url'), $(this).data('ucsc-render-url')
       );
     });
   ")
@@ -115,16 +146,46 @@ default_cols_struc <-
 struc_variants <-
   read_csv("struc_candidates.csv") %>%
   select(all_of(default_cols_struc), everything()) %>%
-  mutate(
-    pdf = file.path("by_family", family_id, "varslides", str_c(".*", variant_id, ".*.pdf")) %>%
-      map_chr(~ first(list.files(dirname(.), pattern = basename(.), full.names = T))),
-    samplot = file.path("by_family", family_id, "samplot", str_c("samplot_", family_id, "_", variant_id, ".png")),
-    svpv = file.path(
-      "by_family", family_id, "svpv", family_id, SVTYPE, str_c(CHROM, "_", POS),
-      str_c(CHROM, POS, SVTYPE, "*.pdf", sep = ".")
-    ) %>%
-      map_chr(~ first(list.files(dirname(.), pattern = basename(.), full.names = T))),
-  ) %>%
+  left_join(
+    read_tsv('slides.txt', col_names = 'pdf') %>% 
+      tidyr::extract(
+        pdf,
+        into = c("family_id", "variant_id"),
+        regex = "^([^\\.]+).+\\.([^\\.]+)\\.pdf",
+        remove = FALSE
+      ) %>% 
+      mutate(
+        pdf = file.path('by_family', family_id, 'varslides', pdf)
+      ),
+    by = join_by(family_id, variant_id)
+  ) %>% 
+  left_join(
+    read_tsv('svpv.txt', col_names = 'svpv') %>% 
+      tidyr::extract(
+        svpv,
+        into = c("family_id", "CHROM", "POS", "SVTYPE"),
+        regex = "^([^\\.]+)\\.([^\\.]+)\\.([0-9]+)\\.([^\\.]+)",
+        remove = FALSE
+      ) %>% 
+      mutate(
+        POS = as.numeric(POS),
+        svpv = file.path("by_family", family_id, "svpv", svpv)
+      ),
+    by = c("family_id", "CHROM", "POS", "SVTYPE"),
+  ) %>% 
+  left_join(
+    read_tsv('samplot.txt', col_names = 'samplot') %>% 
+      tidyr::extract(
+        samplot,
+        into = c("family_id", "variant_id"),
+        regex = "([^\\.]+)\\.([^\\.]+)\\.png",
+        remove = FALSE
+      ) %>% 
+      mutate(
+        samplot = file.path("by_family", family_id, "samplot", samplot)
+      ),
+    by = c("family_id", "variant_id"),
+  ) %>% 
   mutate(
     ucsc_url = {
       colour <- case_when(
@@ -162,8 +223,8 @@ datatable(
       function(row, data) {
         var n = data.length;
         $(row).attr('data-pdf',              data[n-5]);
-        $(row).attr('data-samplot',          data[n-4]);
-        $(row).attr('data-svpv',             data[n-3]);
+        $(row).attr('data-svpv',             data[n-4]);
+        $(row).attr('data-samplot',          data[n-3]);
         $(row).attr('data-ucsc-url',         data[n-2]);
         $(row).attr('data-ucsc-render-url',  data[n-1]);
         $(row).css('cursor', 'pointer');
@@ -193,6 +254,7 @@ datatable(
     <div class="tab-bar">
       <button class="tab-btn active" data-tab="slides">Slides</button>
       <button class="tab-btn"        data-tab="igv">IGV</button>
+      <button class="tab-btn"        data-tab="spliceai-lookup">SpliceAI Lookup</button>
       <button class="tab-btn"        data-tab="ucsc-short">Genome Browser</button>
     </div>
     <div id="tab-slides" class="tab-panel active">
@@ -201,6 +263,12 @@ datatable(
     <div id="tab-igv" class="tab-panel">
       <iframe id="viewer-igv" width="100%" height="800px" style="border:none;"></iframe>
       <p class="citation"><a href="https://doi.org/10.1093/bioinformatics/btac830" target="_blank">Robinson et al. (2022) Bioinformatics. doi:10.1093/bioinformatics/btac830</a></p>
+    </div>
+    <div id="tab-spliceai-lookup" class="tab-panel">
+      <div style="padding: 10px 12px 0;">
+        <a id="spliceai-link" href="#" target="_blank" class="ucsc-btn">Go to SpliceAI Lookup</a>
+      </div>
+      <iframe id="viewer-spliceai" width="100%" height="800px" style="border:none;"></iframe>
     </div>
     <div id="tab-ucsc-short" class="tab-panel">
       <div style="padding: 10px 12px 0;">
@@ -215,7 +283,7 @@ datatable(
     <div class="tab-bar">
       <button class="tab-btn active" data-tab="struc-slides">Slides</button>
       <button class="tab-btn"        data-tab="svpv">SVPV</button>
-      <button class="tab-btn"        data-tab="samplot">SAMPLOT</button>
+      <button class="tab-btn"        data-tab="samplot">Samplot</button>
       <button class="tab-btn"        data-tab="ucsc">Genome Browser</button>
     </div>
     <div id="tab-struc-slides" class="tab-panel active">
@@ -226,7 +294,7 @@ datatable(
       <p class="citation"><a href="https://doi.org/10.1093/bioinformatics/btx117" target="_blank">Munro et al. (2017) Bioinformatics. doi:10.1093/bioinformatics/btx117</a></p>
     </div>
     <div id="tab-samplot" class="tab-panel">
-      <img id="viewer-samplot" width="100%" style="display:block;">
+      <img id="viewer-samplot" style="display:block; width:100%; max-width:1000px;">
       <p class="citation"><a href="https://doi.org/10.1186/s13059-021-02380-5" target="_blank">Belyeu et al. (2021) Genome Biology. doi:10.1186/s13059-021-02380-5</a></p>
     </div>
     <div id="tab-ucsc" class="tab-panel">
@@ -254,8 +322,20 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; }
   box-shadow: 0 2px 6px rgba(0,0,0,0.18);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
   border-radius: 4px;
+}
+#app-logo-wrap {
+  background-color: white;
+  border-radius: 4px;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+}
+#app-logo {
+  height: 36px;
+  width: auto;
 }
 #app-title {
   font-size: 22px;
@@ -359,6 +439,7 @@ table.dataTable td, table.dataTable th {
 
 <script>
 var _pendingIgv       = null;
+var _pendingSpliceAI  = null;
 var _pendingSvpv      = null;
 var _pendingUcscShort = null;
 var _pendingUcsc      = null;
@@ -395,6 +476,12 @@ document.addEventListener('click', function(e) {
   }
 
   // Viewer tab lazy loads
+  if (tab === 'spliceai-lookup' && _pendingSpliceAI) {
+    var spliceaiIframe = document.getElementById('viewer-spliceai');
+    spliceaiIframe.src = '';
+    spliceaiIframe.src = _pendingSpliceAI;
+    _pendingSpliceAI = null;
+  }
   if (tab === 'igv' && _pendingIgv) {
     var igvUrl = _pendingIgv;
     _pendingIgv = null;
@@ -424,7 +511,7 @@ function loadIgvIframe(url) {
   igvIframe.src = base + '?_t=' + Date.now() + hash;
 }
 
-function loadSample(pdfUrl, htmlUrl, rowId, ucscUrl, ucscRenderUrl) {
+function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl) {
   var pdfIframe = document.getElementById('viewer-pdf');
   pdfIframe.src = '';
   clearTimeout(_pdfTimeout);
@@ -437,6 +524,15 @@ function loadSample(pdfUrl, htmlUrl, rowId, ucscUrl, ucscRenderUrl) {
     _pendingIgv = null;
   } else {
     _pendingIgv = igvUrl;
+  }
+  document.getElementById('spliceai-link').href = spliceaiUrl;
+  if (activeTab === 'spliceai-lookup') {
+    var spliceaiIframe = document.getElementById('viewer-spliceai');
+    spliceaiIframe.src = '';
+    spliceaiIframe.src = spliceaiUrl;
+    _pendingSpliceAI = null;
+  } else {
+    _pendingSpliceAI = spliceaiUrl;
   }
   if (activeTab === 'ucsc-short') {
     document.getElementById('ucsc-link-short').href = ucscUrl;

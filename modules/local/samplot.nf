@@ -32,7 +32,7 @@ cat > sites <<< '${sites}'
         echo "samplot plot \\
             -n ${ids.join(' ')} \\
             -b ${bams.join(' ')} \\
-            -o samplot_${fam}_\$NAME.png \\
+            -o ${fam}.\$NAME.png \\
             -c \$CHROM \\
             -s \$START \\
             -e \$END \\
