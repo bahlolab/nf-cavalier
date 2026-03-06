@@ -368,7 +368,7 @@ MAIN <- function(opts) {
       tidyr::extract(
         png,
         into = c("CHROM", "POS", "SVTYPE"),
-        regex = "^SVPV_([^\\.]+)\\.([0-9]+)\\.([^\\.]+)",
+        regex = "^SVPV_[^\\.]+\\.([^\\.]+)\\.([0-9]+)\\.([^\\.]+)",
         remove = FALSE
       ) %>% 
       mutate(POS = as.numeric(POS)) %>% 

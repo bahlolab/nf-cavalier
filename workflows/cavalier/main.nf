@@ -26,7 +26,7 @@ include { PPT_TO_PDF  } from '../../modules/local/ppt_to_pdf'
 include { PDF_UNITE   } from '../../modules/local/pdf_unite.nf'
 include { PDF_COPY    } from '../../modules/local/pdf_copy.nf'
 include { PDF_SPLIT   } from '../../modules/local/pdf_split.nf'
-include { VARVIEWER   } from '../../modules/local/varviewer.nf'
+include { VAR_BROWSER } from '../../modules/local/var_browser.nf'
 
 workflow CAVALIER {
     take:
@@ -97,7 +97,8 @@ workflow CAVALIER {
             .join(pedigree_channel)
             .join(SPLIT_VEP.out.vcf.filter {it[0] == 'SHORT' }.map { it[[1,2,3]] })
             .join(alignment_channel),
-        ref_fasta_channel()
+        ref_fasta_channel(),
+        path("$projectDir/misc/igv_report_mod.txt")
     )
  
     IGV_TO_PNG(
@@ -211,23 +212,29 @@ workflow CAVALIER {
             .toSortedList { it[0] }
             .map { "SYMBOL,n_samples\n" + it.collect { it.join(',') }.join('\n') }
             .collectFile(name: 'by_gene_counts.csv',storeDir: "${params.outdir}")
-
-        VARVIEWER(
-            PDF_SPLIT.out.last().map { true },
-            path("${projectDir}/bin/variant_viewer.Rmd"),
-            path("${params.outdir}")
-        )
     }
 
     /* ----- Save CSV results ----- */
-    collect_csv(
+    short_cand = collect_csv(
         FILTER.out.short_csv.combine(samples_short, by:0).map { it[1] },
         'short_candidates.csv'
     )
 
-    collect_csv(
+    struc_cand = collect_csv(
         FILTER.out.struc_csv.combine(samples_struc, by:0).map { it[1] },
         'struc_candidates.csv'
     )
-    
+
+    if (params.make_slides) {
+        VAR_BROWSER(
+            path("${projectDir}/bin/variant_browser.Rmd"),
+            short_cand,
+            struc_cand,
+            PDF_SPLIT.out          .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'slides.txt'),
+            IGV_REPORT.out.combined.flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'igv_report.txt'),
+            SVPV.out               .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'svpv.txt'),
+            SAMPLOT.out            .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'samplot.txt')
+        )
+    }
+
 }

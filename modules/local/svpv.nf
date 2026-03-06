@@ -15,7 +15,7 @@ process SVPV {
     tuple path(ref), path(ref_fai)
 
     output:
-    tuple val(fam), path("$fam/**.pdf")
+    tuple val(fam), path("*.pdf")
 
     script:
     """
@@ -34,10 +34,12 @@ process SVPV {
     export REF_PATH=$ref # required for cram input
 
     SVPV \\
-        -o $fam \\
+        -o output \\
         -samples ${ids.join(',')} \\
         -aln ${bams.join(',')} \\
         -vcf filtered.vcf.gz \\
         -ref_gene $ref_gene
+    
+    find output -name '*.pdf' -exec bash -c 'mv "\$1" "${fam}.\$(basename \$1)"' _ {} \\;
     """
 }
