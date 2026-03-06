@@ -248,7 +248,7 @@ datatable(
   </div>
 </div>
 
-<div style="margin-top: 28px;">
+<div style="margin-top: 14px;">
 
   <div id="viewer-short" class="viewer-container">
     <div class="tab-bar">
@@ -294,7 +294,7 @@ datatable(
       <p class="citation"><a href="https://doi.org/10.1093/bioinformatics/btx117" target="_blank">Munro et al. (2017) Bioinformatics. doi:10.1093/bioinformatics/btx117</a></p>
     </div>
     <div id="tab-samplot" class="tab-panel">
-      <img id="viewer-samplot" style="display:block; width:100%; max-width:1000px;">
+      <img id="viewer-samplot" style="display:block; width:100%; max-width:1000px; margin: 0 auto;">
       <p class="citation"><a href="https://doi.org/10.1186/s13059-021-02380-5" target="_blank">Belyeu et al. (2021) Genome Biology. doi:10.1186/s13059-021-02380-5</a></p>
     </div>
     <div id="tab-ucsc" class="tab-panel">
@@ -318,7 +318,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; }
   background-color: #49A942;
   color: white;
   padding: 14px 28px;
-  margin-bottom: 28px;
+  margin-bottom: 14px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.18);
   display: flex;
   align-items: center;
@@ -375,7 +375,7 @@ table.dataTable td, table.dataTable th {
   border-radius: 0 6px 6px 6px;
   box-shadow: 0 3px 10px rgba(0,0,0,0.08);
 }
-.vtype-container  { margin-bottom: 28px; }
+.vtype-container  { margin-bottom: 14px; }
 .viewer-container { overflow: hidden; }
 
 /* ── Tab bar ── */
@@ -492,16 +492,23 @@ document.addEventListener('click', function(e) {
     _pendingSvpv = null;
   }
   if (tab === 'ucsc-short' && _pendingUcscShort) {
+    var ucscShortIframe = document.getElementById('viewer-ucsc-short');
     document.getElementById('ucsc-link-short').href = _pendingUcscShort.url;
-    document.getElementById('viewer-ucsc-short').src = _pendingUcscShort.renderUrl;
+    ucscShortIframe.src = ucscWithPix(_pendingUcscShort.renderUrl, ucscShortIframe);
     _pendingUcscShort = null;
   }
   if (tab === 'ucsc' && _pendingUcsc) {
+    var ucscIframe = document.getElementById('viewer-ucsc');
     document.getElementById('ucsc-link').href = _pendingUcsc.url;
-    document.getElementById('viewer-ucsc').src = _pendingUcsc.renderUrl;
+    ucscIframe.src = ucscWithPix(_pendingUcsc.renderUrl, ucscIframe);
     _pendingUcsc = null;
   }
 });
+
+function ucscWithPix(url, iframeEl) {
+  var w = iframeEl.clientWidth || iframeEl.offsetWidth || 800;
+  return url + '&pix=' + w;
+}
 
 function loadIgvIframe(url) {
   var igvIframe = document.getElementById('viewer-igv');
@@ -535,8 +542,9 @@ function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl)
     _pendingSpliceAI = spliceaiUrl;
   }
   if (activeTab === 'ucsc-short') {
+    var ucscShortEl = document.getElementById('viewer-ucsc-short');
     document.getElementById('ucsc-link-short').href = ucscUrl;
-    document.getElementById('viewer-ucsc-short').src = ucscRenderUrl;
+    ucscShortEl.src = ucscWithPix(ucscRenderUrl, ucscShortEl);
     _pendingUcscShort = null;
   } else {
     _pendingUcscShort = { url: ucscUrl, renderUrl: ucscRenderUrl };
@@ -564,8 +572,9 @@ function loadStrucSample(pdfUrl, samplotUrl, svpvUrl, ucscUrl, ucscRenderUrl) {
   }
 
   if (activeTab === 'ucsc') {
+    var ucscEl = document.getElementById('viewer-ucsc');
     document.getElementById('ucsc-link').href = ucscUrl;
-    document.getElementById('viewer-ucsc').src = ucscRenderUrl;
+    ucscEl.src = ucscWithPix(ucscRenderUrl, ucscEl);
     _pendingUcsc = null;
   } else {
     _pendingUcsc = { url: ucscUrl, renderUrl: ucscRenderUrl };
