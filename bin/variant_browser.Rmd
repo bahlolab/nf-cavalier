@@ -96,7 +96,9 @@ variants <-
     ucsc_render_url = str_replace(ucsc_url, 'hgTracks', 'hgRenderTracks')
   )
 
-cd <- dt_coldefs(variants, length(default_cols), n_internal = 6)
+cd              <- dt_coldefs(variants, length(default_cols), n_internal = 6)
+gene_col_short   <- which(names(variants) == "Gene")   - 1L
+symbol_col_short <- which(names(variants) == "SYMBOL") - 1L
 ```
 
 ```{r show_short, echo=FALSE}
@@ -108,7 +110,7 @@ datatable(
     pageLength = 10, dom = 'Blfrtip', autoWidth = FALSE,
     buttons = list(list(extend = 'colvis', columns = cd$colvis_targets)),
     columnDefs = cd$col_defs,
-    rowCallback = JS("
+    rowCallback = JS(paste0("
       function(row, data) {
         var n = data.length;
         $(row).attr('data-pdf',             data[n-6]);
@@ -117,9 +119,11 @@ datatable(
         $(row).attr('data-spliceai-url',    data[n-3]);
         $(row).attr('data-ucsc-url',        data[n-2]);
         $(row).attr('data-ucsc-render-url', data[n-1]);
+        $(row).attr('data-gene',            data[", gene_col_short, "]);
+        $(row).attr('data-symbol',          data[", symbol_col_short, "]);
         $(row).css('cursor', 'pointer');
       }
-    ")
+    "))
   ),
   callback = JS("
     table.on('click', 'tbody tr', function() {
@@ -127,7 +131,8 @@ datatable(
       $(this).addClass('selected-row');
       loadSample(
         $(this).data('pdf'), $(this).data('html'), Number($(this).data('row-id')),
-        $(this).data('spliceai-url'), $(this).data('ucsc-url'), $(this).data('ucsc-render-url')
+        $(this).data('spliceai-url'), $(this).data('ucsc-url'), $(this).data('ucsc-render-url'),
+        $(this).data('gene'), $(this).data('symbol')
       );
     });
   ")
@@ -207,7 +212,9 @@ struc_variants <-
     ucsc_render_url = str_replace(ucsc_url, 'hgTracks', 'hgRenderTracks')
   )
 
-cd_s <- dt_coldefs(struc_variants, length(default_cols_struc), n_internal = 5)
+cd_s            <- dt_coldefs(struc_variants, length(default_cols_struc), n_internal = 5)
+gene_col_struc   <- which(names(struc_variants) == "Gene")   - 1L
+symbol_col_struc <- which(names(struc_variants) == "SYMBOL") - 1L
 ```
 
 ```{r show_struc, echo=FALSE}
@@ -219,7 +226,7 @@ datatable(
     pageLength = 10, dom = 'Blfrtip', autoWidth = FALSE,
     buttons = list(list(extend = 'colvis', columns = cd_s$colvis_targets)),
     columnDefs = cd_s$col_defs,
-    rowCallback = JS("
+    rowCallback = JS(paste0("
       function(row, data) {
         var n = data.length;
         $(row).attr('data-pdf',              data[n-5]);
@@ -227,9 +234,11 @@ datatable(
         $(row).attr('data-samplot',          data[n-3]);
         $(row).attr('data-ucsc-url',         data[n-2]);
         $(row).attr('data-ucsc-render-url',  data[n-1]);
+        $(row).attr('data-gene',             data[", gene_col_struc, "]);
+        $(row).attr('data-symbol',           data[", symbol_col_struc, "]);
         $(row).css('cursor', 'pointer');
       }
-    ")
+    "))
   ),
   callback = JS("
     table.on('click', 'tbody tr', function() {
@@ -237,7 +246,8 @@ datatable(
       $(this).addClass('selected-row');
       loadStrucSample(
         $(this).data('pdf'), $(this).data('samplot'), $(this).data('svpv'),
-        $(this).data('ucsc-url'), $(this).data('ucsc-render-url')
+        $(this).data('ucsc-url'), $(this).data('ucsc-render-url'),
+        $(this).data('gene'), $(this).data('symbol')
       );
     });
   ")
@@ -256,26 +266,58 @@ datatable(
       <button class="tab-btn"        data-tab="igv">IGV</button>
       <button class="tab-btn"        data-tab="spliceai-lookup">SpliceAI Lookup</button>
       <button class="tab-btn"        data-tab="ucsc-short">Genome Browser</button>
+      <button class="tab-btn"        data-tab="gene-info-short">Gene Info</button>
+      <button class="tab-btn"        data-tab="panelapp-short">PanelApp</button>
     </div>
     <div id="tab-slides" class="tab-panel active">
-      <iframe id="viewer-pdf" width="100%" height="800px" style="border:none;"></iframe>
+      <iframe id="viewer-pdf"></iframe>
     </div>
     <div id="tab-igv" class="tab-panel">
-      <iframe id="viewer-igv" width="100%" height="800px" style="border:none;"></iframe>
+      <iframe id="viewer-igv"></iframe>
       <p class="citation"><a href="https://doi.org/10.1093/bioinformatics/btac830" target="_blank">Robinson et al. (2022) Bioinformatics. doi:10.1093/bioinformatics/btac830</a></p>
     </div>
     <div id="tab-spliceai-lookup" class="tab-panel">
-      <div style="padding: 10px 12px 0;">
+      <div class="btn-bar">
         <a id="spliceai-link" href="#" target="_blank" class="ucsc-btn">Go to SpliceAI Lookup</a>
       </div>
-      <iframe id="viewer-spliceai" width="100%" height="800px" style="border:none;"></iframe>
+      <iframe id="viewer-spliceai"></iframe>
     </div>
     <div id="tab-ucsc-short" class="tab-panel">
-      <div style="padding: 10px 12px 0;">
+      <div class="btn-bar">
         <a id="ucsc-link-short" href="#" target="_blank" class="ucsc-btn">Open interactive UCSC Genome Browser</a>
       </div>
-      <iframe id="viewer-ucsc-short" width="100%" height="800px" style="border:none;"></iframe>
+      <iframe id="viewer-ucsc-short"></iframe>
       <p class="citation"><a href="https://doi.org/10.1093/nar/gkaf1250" target="_blank">Casper et al. (2025) Nucleic Acids Research. doi:10.1093/nar/gkaf1250</a></p>
+    </div>
+    <div id="tab-gene-info-short" class="tab-panel">
+      <div class="gene-info-panel">
+        <details class="info-section" open>
+          <summary class="info-section-title">HGNC</summary>
+          <div id="hgnc-data-short" class="hgnc-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+        <details class="info-section" open>
+          <summary class="info-section-title">HPO</summary>
+          <div class="info-placeholder">Coming soon.</div>
+        </details>
+      </div>
+    </div>
+    <div id="tab-panelapp-short" class="tab-panel">
+      <div class="gene-info-panel">
+        <details class="info-section" open>
+          <summary class="info-section-title">PanelApp Australia</summary>
+          <div id="panelapp-aus-short" class="panelapp-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+        <details class="info-section" open>
+          <summary class="info-section-title">Genomics England PanelApp</summary>
+          <div id="panelapp-gel-short" class="panelapp-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+      </div>
     </div>
   </div>
 
@@ -285,12 +327,14 @@ datatable(
       <button class="tab-btn"        data-tab="svpv">SVPV</button>
       <button class="tab-btn"        data-tab="samplot">Samplot</button>
       <button class="tab-btn"        data-tab="ucsc">Genome Browser</button>
+      <button class="tab-btn"        data-tab="gene-info-struc">Gene Info</button>
+      <button class="tab-btn"        data-tab="panelapp-struc">PanelApp</button>
     </div>
     <div id="tab-struc-slides" class="tab-panel active">
-      <iframe id="viewer-struc-pdf" width="100%" height="800px" style="border:none;"></iframe>
+      <iframe id="viewer-struc-pdf"></iframe>
     </div>
     <div id="tab-svpv" class="tab-panel">
-      <iframe id="viewer-svpv" width="100%" height="800px" style="border:none;"></iframe>
+      <iframe id="viewer-svpv"></iframe>
       <p class="citation"><a href="https://doi.org/10.1093/bioinformatics/btx117" target="_blank">Munro et al. (2017) Bioinformatics. doi:10.1093/bioinformatics/btx117</a></p>
     </div>
     <div id="tab-samplot" class="tab-panel">
@@ -298,11 +342,41 @@ datatable(
       <p class="citation"><a href="https://doi.org/10.1186/s13059-021-02380-5" target="_blank">Belyeu et al. (2021) Genome Biology. doi:10.1186/s13059-021-02380-5</a></p>
     </div>
     <div id="tab-ucsc" class="tab-panel">
-      <div style="padding: 10px 12px 0;">
+      <div class="btn-bar">
         <a id="ucsc-link" href="#" target="_blank" class="ucsc-btn">Open interactive UCSC Genome Browser</a>
       </div>
-      <iframe id="viewer-ucsc" width="100%" height="800px" style="border:none;"></iframe>
+      <iframe id="viewer-ucsc"></iframe>
       <p class="citation"><a href="https://doi.org/10.1093/nar/gkaf1250" target="_blank">Casper et al. (2025) Nucleic Acids Research. doi:10.1093/nar/gkaf1250</a></p>
+    </div>
+    <div id="tab-gene-info-struc" class="tab-panel">
+      <div class="gene-info-panel">
+        <details class="info-section" open>
+          <summary class="info-section-title">HGNC</summary>
+          <div id="hgnc-data-struc" class="hgnc-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+        <details class="info-section" open>
+          <summary class="info-section-title">HPO</summary>
+          <div class="info-placeholder">Coming soon.</div>
+        </details>
+      </div>
+    </div>
+    <div id="tab-panelapp-struc" class="tab-panel">
+      <div class="gene-info-panel">
+        <details class="info-section" open>
+          <summary class="info-section-title">PanelApp Australia</summary>
+          <div id="panelapp-aus-struc" class="panelapp-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+        <details class="info-section" open>
+          <summary class="info-section-title">Genomics England PanelApp</summary>
+          <div id="panelapp-gel-struc" class="panelapp-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+      </div>
     </div>
   </div>
 
@@ -341,7 +415,6 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; }
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.4px;
-  color: white;
 }
 
 /* ── DataTable ── */
@@ -414,6 +487,9 @@ table.dataTable td, table.dataTable th {
 .container      { width: 100% !important; max-width: 100% !important; }
 .main-container { width: 95% !important; max-width: 95% !important; }
 
+.tab-panel iframe { width: 100%; height: 800px; border: none; display: block; }
+.btn-bar { padding: 10px 12px 0; }
+
 .citation {
   font-size: 11px;
   color: #888;
@@ -421,6 +497,131 @@ table.dataTable td, table.dataTable th {
 }
 .citation a { color: #888; }
 .citation a:hover { color: #555; }
+
+/* ── Gene Info panel ── */
+.gene-info-panel { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+.info-section {
+  border: 1px solid #c8e6c8;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.info-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  padding: 8px 14px;
+  background: #edf7ed;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-left: 3px solid #49A942;
+}
+.info-section-title::before {
+  content: '▾';
+  font-size: 15px;
+  transition: transform 0.15s;
+  display: inline-block;
+  color: #49A942;
+}
+.info-section[open] > .info-section-title::before { transform: rotate(0deg); }
+.info-section:not([open]) > .info-section-title::before { transform: rotate(-90deg); }
+
+.hgnc-data { padding: 12px 14px; }
+.info-placeholder { color: #aaa; font-size: 13px; padding: 8px 14px; display: block; }
+
+.hgnc-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e4f1e4;
+}
+.hgnc-symbol {
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  background: #49A942;
+  padding: 2px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+.hgnc-name   { font-size: 14px; color: #444; }
+.hgnc-meta   { font-size: 12px; color: #777; margin-bottom: 10px; }
+
+.hgnc-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  column-gap: 20px;
+  row-gap: 5px;
+  font-size: 13px;
+  align-items: baseline;
+}
+.hg-l { font-weight: 600; color: #333; white-space: nowrap; }
+.hg-v { color: #222; }
+
+/* ── PanelApp ── */
+.panelapp-data { padding: 10px 14px 6px; }
+
+details.pa-entry {
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.pa-header {
+  background: #f6f6f6;
+  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.pa-header::-webkit-details-marker { display: none; }
+.pa-header::before { content: '▾'; color: #aaa; font-size: 14px; transition: transform 0.15s; display: inline-block; flex-shrink: 0; }
+details.pa-entry[open] > .pa-header { border-bottom: 1px solid #e8e8e8; }
+details.pa-entry:not([open]) > .pa-header::before { transform: rotate(-90deg); }
+
+.pa-badge, .pa-moi-short {
+  display: inline-block;
+  box-sizing: border-box;
+  text-align: center;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pa-badge     { color: white; }
+.pa-green     { background: #49A942; }
+.pa-amber     { background: #e8960a; }
+.pa-red       { background: #d9363e; }
+.pa-grey      { background: #888; }
+.pa-moi-short { color: #444; background: #e4e4e4; }
+
+.pa-panel-name { font-size: 13px; font-weight: 600; text-decoration: none; }
+.pa-panel-name:hover { text-decoration: underline; }
+
+.pa-details {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.pa-row { display: flex; gap: 10px; align-items: baseline; }
+.pa-label { font-weight: 600; color: #555; min-width: 100px; flex-shrink: 0; }
+.pa-val   { color: #222; }
+.pa-publist { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+
+.hgnc-meta a, .hg-v a, .pa-val a, .pa-panel-name { color: #2372B9; }
 
 .ucsc-btn {
   display: inline-block;
@@ -438,13 +639,21 @@ table.dataTable td, table.dataTable th {
 </style>
 
 <script>
-var _pendingIgv       = null;
-var _pendingSpliceAI  = null;
-var _pendingSvpv      = null;
-var _pendingUcscShort = null;
-var _pendingUcsc      = null;
-var _pdfTimeout       = null;
-var _strucPdfTimeout  = null;
+var _pendingIgv           = null;
+var _pendingSpliceAI      = null;
+var _pendingSvpv          = null;
+var _pendingUcscShort     = null;
+var _pendingUcsc          = null;
+var _pendingGeneInfoShort = null;
+var _pendingGeneInfoStruc = null;
+var _pdfTimeout           = null;
+var _strucPdfTimeout      = null;
+var _hgncCache            = Object.create(null);
+var _pubmedCache          = Object.create(null);
+var _panelappAusCache     = Object.create(null);
+var _panelappGelCache     = Object.create(null);
+var _pendingPanelAppShort = null;
+var _pendingPanelAppStruc = null;
 var _activeTabs = { 'vtype-container': 'vtab-short', 'viewer-short': 'slides', 'viewer-struc': 'struc-slides' };
 
 // Both panels start visible so DataTables can measure column widths during init.
@@ -503,11 +712,242 @@ document.addEventListener('click', function(e) {
     ucscIframe.src = ucscWithPix(_pendingUcsc.renderUrl, ucscIframe);
     _pendingUcsc = null;
   }
+  if (tab === 'gene-info-short' && _pendingGeneInfoShort) {
+    loadGeneInfo(_pendingGeneInfoShort, 'short');
+    _pendingGeneInfoShort = null;
+  }
+  if (tab === 'gene-info-struc' && _pendingGeneInfoStruc) {
+    loadGeneInfo(_pendingGeneInfoStruc, 'struc');
+    _pendingGeneInfoStruc = null;
+  }
+  if (tab === 'panelapp-short' && _pendingPanelAppShort) {
+    loadPanelApp(_pendingPanelAppShort.symbol, _pendingPanelAppShort.geneId, 'short');
+    _pendingPanelAppShort = null;
+  }
+  if (tab === 'panelapp-struc' && _pendingPanelAppStruc) {
+    loadPanelApp(_pendingPanelAppStruc.symbol, _pendingPanelAppStruc.geneId, 'struc');
+    _pendingPanelAppStruc = null;
+  }
 });
 
 function ucscWithPix(url, iframeEl) {
   var w = iframeEl.clientWidth || iframeEl.offsetWidth || 800;
   return url + '&pix=' + w;
+}
+
+async function fetchHgnc(ensemblGeneId) {
+  if (ensemblGeneId in _hgncCache) return _hgncCache[ensemblGeneId];
+  try {
+    var r    = await fetch('https://rest.genenames.org/fetch/ensembl_gene_id/' + encodeURIComponent(ensemblGeneId),
+                           { headers: { 'Accept': 'application/json' } });
+    var json = await r.json();
+    var doc  = (json.response && json.response.docs && json.response.docs[0]) || null;
+    _hgncCache[ensemblGeneId] = doc;
+    return doc;
+  } catch(e) {
+    _hgncCache[ensemblGeneId] = null;
+    return null;
+  }
+}
+
+function renderHgnc(doc) {
+  if (!doc) return '<span class="info-placeholder">No HGNC record found.</span>';
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function lnk(href, text) { return '<a href="' + esc(href) + '" target="_blank">' + esc(text) + '</a>'; }
+  function arr(v) { return Array.isArray(v) ? v : (v ? [v] : []); }
+  function maneLnk(id) {
+    return id.startsWith('ENST')
+      ? lnk('https://www.ensembl.org/Homo_sapiens/Transcript/Summary?db=core;t=' + id.split('.')[0], id)
+      : lnk('https://www.ncbi.nlm.nih.gov/nuccore/' + id, id);
+  }
+
+  var hgncUrl = 'https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/' + doc.hgnc_id;
+  var html =
+    '<div class="hgnc-header">' +
+      '<span class="hgnc-symbol">' + esc(doc.symbol) + '</span>' +
+      '<span class="hgnc-name">'   + esc(doc.name)   + '</span>' +
+    '</div>' +
+    '<div class="hgnc-meta">' +
+      lnk(hgncUrl, doc.hgnc_id) +
+      (doc.location ? ' &nbsp;·&nbsp; ' + esc(doc.location) : '') +
+      ' &nbsp;·&nbsp; ' + esc(doc.status) +
+    '</div>' +
+    '<div class="hgnc-grid">';
+
+  function cell(label, val) {
+    return '<span class="hg-l">' + label + '</span><span class="hg-v">' + (val || '') + '</span>';
+  }
+
+  // Interleaved so 4-column grid renders as: col1-label | col1-value | col2-label | col2-value
+  html += cell('Ensembl', lnk('https://www.ensembl.org/id/' + esc(doc.ensembl_gene_id), esc(doc.ensembl_gene_id)));
+  html += cell('Locus type',      esc(doc.locus_type));
+  html += cell('Entrez',  doc.entrez_id ? lnk('https://www.ncbi.nlm.nih.gov/gene/' + doc.entrez_id, doc.entrez_id) : '');
+  html += cell('Previous symbol', arr(doc.prev_symbol).map(esc).join(', '));
+  html += cell('OMIM',    arr(doc.omim_id).map(function(id)     { return lnk('https://www.omim.org/entry/' + id, id); }).join(', '));
+  html += cell('Alias symbols',   arr(doc.alias_symbol).map(esc).join(', '));
+  html += cell('UniProt', arr(doc.uniprot_ids).map(function(id) { return lnk('https://www.uniprot.org/uniprot/' + id, id); }).join(', '));
+  html += cell('MANE select', arr(doc.mane_select).map(maneLnk).join(', '));
+  html += '</div>';
+  return html;
+}
+
+async function loadGeneInfo(ensemblGeneId, suffix) {
+  var hgncEl = document.getElementById('hgnc-data-' + suffix);
+  if (hgncEl) {
+    hgncEl.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
+    hgncEl.innerHTML = renderHgnc(await fetchHgnc(ensemblGeneId));
+  }
+}
+
+async function fetchPubmedSummaries(pmids) {
+  var toFetch = pmids.filter(function(id) { return !(id in _pubmedCache); });
+  if (!toFetch.length) return;
+  try {
+    var r    = await fetch('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=' + toFetch.join(',') + '&retmode=json');
+    var json = await r.json();
+    var res  = json.result || {};
+    toFetch.forEach(function(id) { _pubmedCache[id] = res[id] || null; });
+  } catch(e) {
+    toFetch.forEach(function(id) { _pubmedCache[id] = null; });
+  }
+}
+
+function formatPubmedRef(pmid) {
+  function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  var url  = 'https://pubmed.ncbi.nlm.nih.gov/' + pmid + '/';
+  var doc  = _pubmedCache[String(pmid)];
+  if (!doc) return '<a href="' + url + '" target="_blank">PMID:' + pmid + '</a>';
+  var title   = esc((doc.title || '').replace(/\.$/, ''));
+  var authors = doc.authors || [];
+  var auth    = authors.length ? esc(authors[0].name) + (authors.length > 1 ? ' et al.' : '') : '';
+  var journal = esc(doc.source || '');
+  var year    = esc((doc.pubdate || '').split(' ')[0]);
+  return '<a href="' + url + '" target="_blank">\u201c' + title + '\u201d</a>' +
+    (auth    ? ', ' + auth    : '') +
+    (journal ? ', <em>' + journal + '</em>' : '') +
+    (year    ? ' (' + year + ')' : '');
+}
+
+async function queryPanelApp(symbol, baseUrl, cache) {
+  if (symbol in cache) return cache[symbol];
+  try {
+    var r    = await fetch(baseUrl + '/api/v1/genes/?entity_name=' + encodeURIComponent(symbol));
+    var json = await r.json();
+    var res  = json.results || [];
+    cache[symbol] = res;
+    return res;
+  } catch(e) {
+    return null;
+  }
+}
+
+function renderPanelApp(results, baseUrl) {
+  if (!results || results.length === 0)
+    return '<span class="info-placeholder">No entries found.</span>';
+
+  function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function linkPhenotype(s) {
+    var e = esc(s);
+    e = e.replace(/(?:OMIM\s*#|MIM#)\s*(\d+)/gi, function(m, id) {
+      return '<a href="https://www.omim.org/entry/' + id + '" target="_blank">' + m + '</a>';
+    });
+    e = e.replace(/MONDO:(\d+)/g, function(m, id) {
+      return '<a href="https://monarchinitiative.org/disease/MONDO:' + id + '" target="_blank">' + m + '</a>';
+    });
+    return e;
+  }
+
+  var confMap = { '3': ['GREEN','pa-green'], '2': ['AMBER','pa-amber'], '1': ['RED','pa-red'] };
+
+  results = results.slice().sort(function(a, b) {
+    var cl = parseInt(b.confidence_level) - parseInt(a.confidence_level);
+    if (cl !== 0) return cl;
+    return (a.panel.name || '').localeCompare(b.panel.name || '');
+  });
+
+  return results.map(function(r) {
+    var conf     = confMap[r.confidence_level] || ['?', 'pa-grey'];
+    var panelUrl = baseUrl + '/panels/' + r.panel.id + '/gene/' + encodeURIComponent(r.entity_name) + '/';
+    var moiShort = ((r.mode_of_inheritance || '').split(/[\s,]/)[0].toUpperCase()) || 'UNKNOWN';
+    var phenoHtml = (r.phenotypes || []).map(linkPhenotype).join('<br>') ||
+                    '<span style="color:#aaa">—</span>';
+    var pubs = (r.publications || []).map(function(p) {
+      var m = String(p).match(/\d+/);
+      return m ? formatPubmedRef(m[0]) : null;
+    }).filter(Boolean);
+    var pubHtml = pubs.length
+      ? '<ul class="pa-publist">' + pubs.map(function(ref) { return '<li>' + ref + '</li>'; }).join('') + '</ul>'
+      : '<span style="color:#aaa">—</span>';
+    var moi = esc(r.mode_of_inheritance) || '<span style="color:#aaa">—</span>';
+
+    return '<details class="pa-entry">' +
+      '<summary class="pa-header">' +
+        '<span class="pa-badge ' + conf[1] + '">' + conf[0] + '</span>' +
+        (moiShort ? '<span class="pa-moi-short">' + esc(moiShort) + '</span>' : '') +
+        '<a href="' + esc(panelUrl) + '" target="_blank" class="pa-panel-name" onclick="event.stopPropagation()">' + esc(r.panel.name) + '</a>' +
+      '</summary>' +
+      '<div class="pa-details">' +
+        '<div class="pa-row"><span class="pa-label">MOI</span><span class="pa-val">' + moi + '</span></div>' +
+        '<div class="pa-row"><span class="pa-label">Phenotypes</span><span class="pa-val">' + phenoHtml + '</span></div>' +
+        '<div class="pa-row"><span class="pa-label">Publications</span><span class="pa-val">' + pubHtml + '</span></div>' +
+      '</div>' +
+    '</details>';
+  }).join('');
+}
+
+async function loadPanelAppSource(symbol, ensemblGeneId, elId, baseUrl, cache) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
+
+  var results = await queryPanelApp(symbol, baseUrl, cache);
+
+  if (results !== null && results.length === 0) {
+    var hgncDoc = ensemblGeneId in _hgncCache
+      ? _hgncCache[ensemblGeneId]
+      : await fetchHgnc(ensemblGeneId);
+    if (hgncDoc) {
+      if (hgncDoc.symbol && hgncDoc.symbol !== symbol) {
+        results = await queryPanelApp(hgncDoc.symbol, baseUrl, cache) || results;
+      }
+      if (results.length === 0) {
+        var prev = Array.isArray(hgncDoc.prev_symbol) ? hgncDoc.prev_symbol
+                 : (hgncDoc.prev_symbol ? [hgncDoc.prev_symbol] : []);
+        for (var i = 0; i < prev.length && results.length === 0; i++) {
+          results = await queryPanelApp(prev[i], baseUrl, cache) || results;
+        }
+      }
+    }
+  }
+
+  var allPmids = [];
+  (results || []).forEach(function(r) {
+    (r.publications || []).forEach(function(p) {
+      var m = String(p).match(/\d+/);
+      if (m) allPmids.push(m[0]);
+    });
+  });
+  if (allPmids.length) await fetchPubmedSummaries(allPmids);
+
+  el.innerHTML = renderPanelApp(results || [], baseUrl);
+  equalizePills(el, '.pa-badge');
+  equalizePills(el, '.pa-moi-short');
+}
+
+function equalizePills(container, selector) {
+  var pills = Array.prototype.slice.call(container.querySelectorAll(selector));
+  if (!pills.length) return;
+  pills.forEach(function(p) { p.style.width = ''; });
+  var maxW = pills.reduce(function(m, p) { return Math.max(m, p.offsetWidth); }, 0);
+  if (maxW > 0) pills.forEach(function(p) { p.style.width = maxW + 'px'; });
+}
+
+function loadPanelApp(symbol, ensemblGeneId, suffix) {
+  loadPanelAppSource(symbol, ensemblGeneId, 'panelapp-aus-' + suffix,
+    'https://panelapp-aus.org', _panelappAusCache);
+  loadPanelAppSource(symbol, ensemblGeneId, 'panelapp-gel-' + suffix,
+    'https://panelapp.genomicsengland.co.uk', _panelappGelCache);
 }
 
 function loadIgvIframe(url) {
@@ -518,7 +958,7 @@ function loadIgvIframe(url) {
   igvIframe.src = base + '?_t=' + Date.now() + hash;
 }
 
-function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl) {
+function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl, ensemblGeneId, symbol) {
   var pdfIframe = document.getElementById('viewer-pdf');
   pdfIframe.src = '';
   clearTimeout(_pdfTimeout);
@@ -550,10 +990,23 @@ function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl)
     _pendingUcscShort = { url: ucscUrl, renderUrl: ucscRenderUrl };
   }
 
+  if (activeTab === 'gene-info-short') {
+    loadGeneInfo(ensemblGeneId, 'short');
+    _pendingGeneInfoShort = null;
+  } else {
+    _pendingGeneInfoShort = ensemblGeneId;
+  }
+  if (activeTab === 'panelapp-short') {
+    loadPanelApp(symbol, ensemblGeneId, 'short');
+    _pendingPanelAppShort = null;
+  } else {
+    _pendingPanelAppShort = { symbol: symbol, geneId: ensemblGeneId };
+  }
+
   switchTab(document.getElementById('viewer-short'), activeTab);
 }
 
-function loadStrucSample(pdfUrl, samplotUrl, svpvUrl, ucscUrl, ucscRenderUrl) {
+function loadStrucSample(pdfUrl, samplotUrl, svpvUrl, ucscUrl, ucscRenderUrl, ensemblGeneId, symbol) {
   var strucPdfIframe = document.getElementById('viewer-struc-pdf');
   strucPdfIframe.src = '';
   clearTimeout(_strucPdfTimeout);
@@ -578,6 +1031,19 @@ function loadStrucSample(pdfUrl, samplotUrl, svpvUrl, ucscUrl, ucscRenderUrl) {
     _pendingUcsc = null;
   } else {
     _pendingUcsc = { url: ucscUrl, renderUrl: ucscRenderUrl };
+  }
+
+  if (activeTab === 'gene-info-struc') {
+    loadGeneInfo(ensemblGeneId, 'struc');
+    _pendingGeneInfoStruc = null;
+  } else {
+    _pendingGeneInfoStruc = ensemblGeneId;
+  }
+  if (activeTab === 'panelapp-struc') {
+    loadPanelApp(symbol, ensemblGeneId, 'struc');
+    _pendingPanelAppStruc = null;
+  } else {
+    _pendingPanelAppStruc = { symbol: symbol, geneId: ensemblGeneId };
   }
 
   switchTab(document.getElementById('viewer-struc'), activeTab);
