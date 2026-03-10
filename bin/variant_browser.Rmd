@@ -97,9 +97,9 @@ variants <-
     ucsc_render_url = str_replace(ucsc_url, 'hgTracks', 'hgRenderTracks')
   )
 
-cd              <- dt_coldefs(variants, length(default_cols), n_internal = 6)
-gene_col_short   <- which(names(variants) == "Gene")   - 1L
-symbol_col_short <- which(names(variants) == "SYMBOL") - 1L
+cd <- dt_coldefs(variants, length(default_cols), n_internal = 6)
+
+col_index_short <- function(COL) { which(names(variants) == COL) - 1L }
 ```
 
 ```{r show_short, echo=FALSE}
@@ -113,15 +113,20 @@ datatable(
     columnDefs = cd$col_defs,
     rowCallback = JS(paste0("
       function(row, data) {
-        var n = data.length;
-        $(row).attr('data-pdf',             data[n-6]);
-        $(row).attr('data-html',            data[n-5]);
-        $(row).attr('data-row-id',          data[n-4]);
-        $(row).attr('data-spliceai-url',    data[n-3]);
-        $(row).attr('data-ucsc-url',        data[n-2]);
-        $(row).attr('data-ucsc-render-url', data[n-1]);
-        $(row).attr('data-gene',            data[", gene_col_short, "]);
-        $(row).attr('data-symbol',          data[", symbol_col_short, "]);
+        $(row).attr('data-family-id',        data[", col_index_short('family_id'),      "]);
+        $(row).attr('data-pdf',             data[", col_index_short('pdf'),            "]);
+        $(row).attr('data-html',            data[", col_index_short('igv'),            "]);
+        $(row).attr('data-row-id',          data[", col_index_short('row_id'),         "]);
+        $(row).attr('data-spliceai-url',    data[", col_index_short('spliceai_url'),   "]);
+        $(row).attr('data-ucsc-url',        data[", col_index_short('ucsc_url'),       "]);
+        $(row).attr('data-ucsc-render-url', data[", col_index_short('ucsc_render_url'),"]);
+        $(row).attr('data-gene',            data[", col_index_short('Gene'),           "]);
+        $(row).attr('data-symbol',          data[", col_index_short('SYMBOL'),         "]);
+        $(row).attr('data-chrom',           data[", col_index_short('CHROM'),          "]);
+        $(row).attr('data-pos',             data[", col_index_short('POS'),            "]);
+        $(row).attr('data-variant-id',       data[", col_index_short('variant_id'),     "]);
+        $(row).attr('data-clnvid',          data[", col_index_short('CLNVID'),         "]);
+        $(row).attr('data-hgvsg',           data[", col_index_short('HGVSg'),          "]);
         $(row).css('cursor', 'pointer');
       }
     "))
@@ -133,7 +138,9 @@ datatable(
       loadSample(
         $(this).data('pdf'), $(this).data('html'), Number($(this).data('row-id')),
         $(this).data('spliceai-url'), $(this).data('ucsc-url'), $(this).data('ucsc-render-url'),
-        $(this).data('gene'), $(this).data('symbol')
+        $(this).data('gene'), $(this).data('symbol'),
+        $(this).data('clnvid'), $(this).data('chrom'), $(this).data('pos'), $(this).data('hgvsg'),
+        $(this).data('family-id'), $(this).data('variant-id')
       );
     });
   ")
@@ -213,9 +220,8 @@ struc_variants <-
     ucsc_render_url = str_replace(ucsc_url, 'hgTracks', 'hgRenderTracks')
   )
 
-cd_s            <- dt_coldefs(struc_variants, length(default_cols_struc), n_internal = 5)
-gene_col_struc   <- which(names(struc_variants) == "Gene")   - 1L
-symbol_col_struc <- which(names(struc_variants) == "SYMBOL") - 1L
+cd_s           <- dt_coldefs(struc_variants, length(default_cols_struc), n_internal = 5)
+col_index_struc <- function(COL) { which(names(struc_variants) == COL) - 1L }
 ```
 
 ```{r show_struc, echo=FALSE}
@@ -229,14 +235,14 @@ datatable(
     columnDefs = cd_s$col_defs,
     rowCallback = JS(paste0("
       function(row, data) {
-        var n = data.length;
-        $(row).attr('data-pdf',              data[n-5]);
-        $(row).attr('data-svpv',             data[n-4]);
-        $(row).attr('data-samplot',          data[n-3]);
-        $(row).attr('data-ucsc-url',         data[n-2]);
-        $(row).attr('data-ucsc-render-url',  data[n-1]);
-        $(row).attr('data-gene',             data[", gene_col_struc, "]);
-        $(row).attr('data-symbol',           data[", symbol_col_struc, "]);
+        $(row).attr('data-family-id',         data[", col_index_struc('family_id'),      "]);
+        $(row).attr('data-pdf',              data[", col_index_struc('pdf'),            "]);
+        $(row).attr('data-svpv',             data[", col_index_struc('svpv'),           "]);
+        $(row).attr('data-samplot',          data[", col_index_struc('samplot'),        "]);
+        $(row).attr('data-ucsc-url',         data[", col_index_struc('ucsc_url'),       "]);
+        $(row).attr('data-ucsc-render-url',  data[", col_index_struc('ucsc_render_url'),"]);
+        $(row).attr('data-gene',             data[", col_index_struc('Gene'),           "]);
+        $(row).attr('data-symbol',           data[", col_index_struc('SYMBOL'),         "]);
         $(row).css('cursor', 'pointer');
       }
     "))
@@ -248,7 +254,7 @@ datatable(
       loadStrucSample(
         $(this).data('pdf'), $(this).data('samplot'), $(this).data('svpv'),
         $(this).data('ucsc-url'), $(this).data('ucsc-render-url'),
-        $(this).data('gene'), $(this).data('symbol')
+        $(this).data('gene'), $(this).data('symbol'), $(this).data('family-id')
       );
     });
   ")
@@ -263,10 +269,11 @@ datatable(
 
   <div id="viewer-short" class="viewer-container">
     <div class="tab-bar">
-      <button class="tab-btn active" data-tab="slides">Slides</button>
-      <button class="tab-btn"        data-tab="igv">IGV</button>
-      <button class="tab-btn"        data-tab="spliceai-lookup">SpliceAI Lookup</button>
-      <button class="tab-btn"        data-tab="ucsc-short">Genome Browser</button>
+      <span class="tab-btn-wrap"><button class="tab-btn active" data-tab="slides">Slides</button><button class="dl-icon-btn" onclick="toggleDlDropdown(this,event)" title="Download slides"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button></span>
+      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="igv">IGV</button><a id="igv-dl-html" href="#" download class="dl-icon-btn" title="Download IGV report" onclick="dlIconActivate(this,event)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a></span>
+      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="spliceai-lookup">SpliceAI Lookup</button><a id="spliceai-link" href="#" target="_blank" class="dl-icon-btn" title="Open SpliceAI Lookup" onclick="dlIconActivate(this,event)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></span>
+      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="ucsc-short">Genome Browser</button><a id="ucsc-link-short" href="#" target="_blank" class="dl-icon-btn" title="Open UCSC Genome Browser" onclick="dlIconActivate(this,event)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></span>
+      <button class="tab-btn"        data-tab="databases">Databases</button>
       <button class="tab-btn"        data-tab="gene-info">Gene Info</button>
       <button class="tab-btn"        data-tab="panelapp">PanelApp</button>
       <button class="tab-btn"        data-tab="hpo">HPO</button>
@@ -276,26 +283,40 @@ datatable(
       <p class="citation"><a href="https://doi.org/10.1093/bioinformatics/btac830" target="_blank">Robinson et al. (2022) Bioinformatics. doi:10.1093/bioinformatics/btac830</a></p>
     </div>
     <div id="tab-spliceai-lookup" class="tab-panel">
-      <div class="btn-bar">
-        <a id="spliceai-link" href="#" target="_blank" class="ucsc-btn">Go to SpliceAI Lookup</a>
-      </div>
       <iframe id="viewer-spliceai"></iframe>
     </div>
     <div id="tab-ucsc-short" class="tab-panel">
-      <div class="btn-bar">
-        <a id="ucsc-link-short" href="#" target="_blank" class="ucsc-btn">Open interactive UCSC Genome Browser</a>
-      </div>
       <iframe id="viewer-ucsc-short"></iframe>
       <p class="citation"><a href="https://doi.org/10.1093/nar/gkaf1250" target="_blank">Casper et al. (2025) Nucleic Acids Research. doi:10.1093/nar/gkaf1250</a></p>
+    </div>
+    <div id="tab-databases" class="tab-panel">
+      <div class="gene-info-panel">
+        <details class="info-section" open>
+          <summary class="info-section-title">ClinVar</summary>
+          <div id="clinvar-content" class="hgnc-data">
+            <span class="info-placeholder">Select a variant to load ClinVar information.</span>
+          </div>
+        </details>
+        <details class="info-section" open>
+          <summary class="info-section-title">All of Us</summary>
+          <div id="aou-content" class="hgnc-data">
+            <span class="info-placeholder">Select a variant to load All of Us data.</span>
+          </div>
+        </details>
+      </div>
+      <p class="citation">
+        <a href="https://doi.org/10.1093/nar/gkx1153" target="_blank">Landrum et al. (2018) ClinVar. Nucleic Acids Research. doi:10.1093/nar/gkx1153</a><br>
+        <a href="https://doi.org/10.1038/s41586-023-06957-x" target="_blank">All of Us Research Program (2024) Genomic data in the All of Us Research Program. Nature. doi:10.1038/s41586-023-06957-x</a>
+      </p>
     </div>
   </div>
 
   <div id="viewer-struc" class="viewer-container" style="display:none;">
     <div class="tab-bar">
-      <button class="tab-btn active" data-tab="slides">Slides</button>
+      <span class="tab-btn-wrap"><button class="tab-btn active" data-tab="slides">Slides</button><button class="dl-icon-btn" onclick="toggleDlDropdown(this,event)" title="Download slides"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button></span>
       <button class="tab-btn"        data-tab="svpv">SVPV</button>
       <button class="tab-btn"        data-tab="samplot">Samplot</button>
-      <button class="tab-btn"        data-tab="ucsc">Genome Browser</button>
+      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="ucsc">Genome Browser</button><a id="ucsc-link" href="#" target="_blank" class="dl-icon-btn" title="Open UCSC Genome Browser" onclick="dlIconActivate(this,event)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></span>
       <button class="tab-btn"        data-tab="gene-info">Gene Info</button>
       <button class="tab-btn"        data-tab="panelapp">PanelApp</button>
       <button class="tab-btn"        data-tab="hpo">HPO</button>
@@ -309,9 +330,6 @@ datatable(
       <p class="citation"><a href="https://doi.org/10.1186/s13059-021-02380-5" target="_blank">Belyeu et al. (2021) Genome Biology. doi:10.1186/s13059-021-02380-5</a></p>
     </div>
     <div id="tab-ucsc" class="tab-panel">
-      <div class="btn-bar">
-        <a id="ucsc-link" href="#" target="_blank" class="ucsc-btn">Open interactive UCSC Genome Browser</a>
-      </div>
       <iframe id="viewer-ucsc"></iframe>
       <p class="citation"><a href="https://doi.org/10.1093/nar/gkaf1250" target="_blank">Casper et al. (2025) Nucleic Acids Research. doi:10.1093/nar/gkaf1250</a></p>
     </div>
@@ -374,6 +392,12 @@ datatable(
   </div>
 
 </div>
+
+<!-- floating download menu, positioned by JS -->
+<div class="dl-dropdown-menu" id="slides-dl-menu">
+  <a id="slides-dl-pdf"  href="#" download class="dl-item">Download slides PDF</a>
+  <a id="slides-dl-pptx" href="#" download class="dl-item">Download slides PPTX</a>
+</div>
 ```
 
 <style>
@@ -420,6 +444,9 @@ table.dataTable td, table.dataTable th {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+table.dataTable thead td {
+  overflow: visible;
 }
 
 /* ── ColVis / Buttons ── */
@@ -469,12 +496,48 @@ table.dataTable td, table.dataTable th {
   transition: color 0.15s, background 0.15s;
 }
 .tab-btn:hover:not(.active) { background: #e4e4e4; color: #333; }
+.tab-btn-wrap .tab-btn:hover:not(.active) { background: transparent; color: #555; }
+.tab-btn-wrap:not(:has(.tab-btn.active)):hover .tab-btn,
+.tab-btn-wrap:not(:has(.tab-btn.active)):hover .dl-icon-btn { background: #e4e4e4; color: #333; }
 .tab-btn.active {
   background: white;
   border-color: #49A942;
   color: #2372B9;
   font-weight: 600;
 }
+.tab-btn-wrap {
+  display: inline-flex;
+  align-items: stretch;
+  position: relative;
+  bottom: -2px;
+}
+.tab-btn-wrap .tab-btn {
+  bottom: 0;
+  border-radius: 4px 0 0 0;
+  border-right: none;
+  padding-right: 10px;
+}
+.dl-icon-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: none;
+  border-bottom: none;
+  border-radius: 0 4px 0 0;
+  cursor: pointer;
+  padding: 0 7px;
+  color: #888;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+}
+.tab-btn.active ~ .dl-icon-btn,
+.tab-btn-wrap:has(.tab-btn.active) .dl-icon-btn {
+  background: white;
+  border-color: #49A942;
+  border-left: none;
+  color: #555;
+}
+.tab-btn-wrap:has(.tab-btn.active) .dl-icon-btn:hover { background: #d4edda !important; color: #2a7a25 !important; }
 .tab-panel        { display: none; }
 .tab-panel.active { display: block; }
 
@@ -617,19 +680,29 @@ details.pa-entry:not([open]) > .pa-header::before { transform: rotate(-90deg); }
 
 .hgnc-meta a, .hg-v a, .pa-val a, .pa-panel-name { color: #2372B9; }
 
-.ucsc-btn {
-  display: inline-block;
-  background: #2372B9;
-  color: white !important;
-  text-decoration: none;
-  padding: 6px 16px;
+
+
+/* ── Slides download dropdown ── */
+.dl-dropdown-menu {
+  display: none;
+  position: fixed;
+  background: white;
+  border: 1px solid #dee2e6;
   border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 8px;
-  transition: background 0.15s;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+  z-index: 1000;
+  min-width: 190px;
 }
-.ucsc-btn:hover { background: #1a5899; }
+.dl-dropdown-menu.open { display: block; }
+.dl-item {
+  display: block;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #333;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.dl-item:hover { background: #f5f5f5; color: #111; }
 </style>
 
 <script>
@@ -643,6 +716,8 @@ var _panelappAusCache = Object.create(null);
 var _panelappGelCache = Object.create(null);
 var _hpoCache             = Object.create(null);
 var _geneSummaryCache     = Object.create(null);
+var _clinvarCache         = Object.create(null);
+var _aouCache             = Object.create(null);
 var _activeTabs = { 'vtype-container': 'vtab-short', 'viewer-short': 'slides', 'viewer-struc': 'slides' };
 
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -715,6 +790,10 @@ document.addEventListener('click', function(e) {
   if (tab === 'gene-info'       && p.geneInfo)   { loadGeneInfo(p.geneInfo); p.geneInfo = null; }
   if (tab === 'panelapp'        && p.panelApp)   { loadPanelApp(p.panelApp.symbol, p.panelApp.geneId); p.panelApp = null; }
   if (tab === 'hpo'             && p.hpo)        { loadHpo(p.hpo); p.hpo = null; }
+  if (tab === 'databases') {
+    if (p.clinvar) { loadClinvar(p.clinvar); p.clinvar = null; }
+    if (p.aou)     { loadAou(p.aou);         p.aou     = null; }
+  }
 });
 
 function ucscWithPix(url, iframeEl) {
@@ -725,11 +804,11 @@ function ucscWithPix(url, iframeEl) {
 var _phHtml = '<span class="info-placeholder">Select a variant to load gene information.</span>';
 
 function clearSharedTabs() {
-  ['hgnc-data', 'gene-summary', 'panelapp-aus', 'panelapp-gel', 'hpo-diseases', 'hpo-phenotypes']
+  ['hgnc-data', 'gene-summary', 'panelapp-aus', 'panelapp-gel', 'hpo-diseases', 'hpo-phenotypes', 'clinvar-content', 'aou-content']
     .forEach(function(id) { document.getElementById(id).innerHTML = _phHtml; });
   clearTimeout(_pdfTimeout);
   document.getElementById('viewer-pdf').src = '';
-  _pending.geneInfo = _pending.panelApp = _pending.hpo = null;
+  _pending.geneInfo = _pending.panelApp = _pending.hpo = _pending.clinvar = _pending.aou = null;
 }
 
 function reloadSharedTabs(state) {
@@ -739,6 +818,8 @@ function reloadSharedTabs(state) {
   _pending.geneInfo = state.ensemblGeneId;
   _pending.panelApp = { symbol: state.symbol, geneId: state.ensemblGeneId };
   _pending.hpo      = state.ensemblGeneId;
+  _pending.clinvar  = state.clinvarInfo || null;
+  _pending.aou      = state.aouId      || null;
   // If a non-slides shared tab is visible, reload it immediately (hits cache)
   var sp = document.getElementById('shared-panels');
   if (sp.style.display !== 'none') {
@@ -754,14 +835,16 @@ function reloadSharedTabs(state) {
 
 async function fetchHgnc(ensemblGeneId) {
   if (ensemblGeneId in _hgncCache) return _hgncCache[ensemblGeneId];
+  var url = 'https://rest.genenames.org/fetch/ensembl_gene_id/' + encodeURIComponent(ensemblGeneId);
   try {
-    var r    = await fetch('https://rest.genenames.org/fetch/ensembl_gene_id/' + encodeURIComponent(ensemblGeneId),
-                           { headers: { 'Accept': 'application/json' } });
+    var r    = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    console.log('[HGNC] GET', url, r.status);
     var json = await r.json();
     var doc  = (json.response && json.response.docs && json.response.docs[0]) || null;
     _hgncCache[ensemblGeneId] = doc;
     return doc;
   } catch(e) {
+    console.error('[HGNC] error:', e);
     _hgncCache[ensemblGeneId] = null;
     return null;
   }
@@ -813,12 +896,15 @@ async function fetchGeneSummary(ensemblGeneId) {
     var doc = await fetchHgnc(ensemblGeneId);
     var entrezId = doc && doc.entrez_id;
     if (!entrezId) { _geneSummaryCache[ensemblGeneId] = null; return null; }
-    var r    = await fetch('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=gene&id=' + encodeURIComponent(entrezId) + '&retmode=json');
+    var url  = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=gene&id=' + encodeURIComponent(entrezId) + '&retmode=json';
+    var r    = await fetch(url);
+    console.log('[NCBI:gene] GET', url, r.status);
     var json = await r.json();
     var text = json.result && json.result[String(entrezId)] && json.result[String(entrezId)].summary;
     _geneSummaryCache[ensemblGeneId] = text || null;
     return text || null;
   } catch(e) {
+    console.error('[NCBI:gene] error:', e);
     _geneSummaryCache[ensemblGeneId] = null;
     return null;
   }
@@ -843,12 +929,15 @@ async function loadGeneInfo(ensemblGeneId) {
 async function fetchPubmedSummaries(pmids) {
   var toFetch = pmids.filter(function(id) { return !(id in _pubmedCache); });
   if (!toFetch.length) return;
+  var url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=' + toFetch.join(',') + '&retmode=json';
   try {
-    var r    = await fetch('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=' + toFetch.join(',') + '&retmode=json');
+    var r    = await fetch(url);
+    console.log('[NCBI:pubmed] GET', url, r.status);
     var json = await r.json();
     var res  = json.result || {};
     toFetch.forEach(function(id) { _pubmedCache[id] = res[id] || null; });
   } catch(e) {
+    console.error('[NCBI:pubmed] error:', e);
     toFetch.forEach(function(id) { _pubmedCache[id] = null; });
   }
 }
@@ -870,13 +959,16 @@ function formatPubmedRef(pmid) {
 
 async function queryPanelApp(symbol, baseUrl, cache) {
   if (symbol in cache) return cache[symbol];
+  var url = baseUrl + '/api/v1/genes/?entity_name=' + encodeURIComponent(symbol);
   try {
-    var r    = await fetch(baseUrl + '/api/v1/genes/?entity_name=' + encodeURIComponent(symbol));
+    var r    = await fetch(url);
+    console.log('[PanelApp] GET', url, r.status);
     var json = await r.json();
     var res  = json.results || [];
     cache[symbol] = res;
     return res;
   } catch(e) {
+    console.error('[PanelApp] error:', e);
     return null;
   }
 }
@@ -995,11 +1087,14 @@ async function fetchHpo(ensemblGeneId) {
     var doc = await fetchHgnc(ensemblGeneId);
     var entrezId = doc && doc.entrez_id;
     if (!entrezId) { _hpoCache[ensemblGeneId] = null; return null; }
-    var r    = await fetch('https://ontology.jax.org/api/network/annotation/NCBIGene:' + encodeURIComponent(entrezId));
+    var url  = 'https://ontology.jax.org/api/network/annotation/NCBIGene:' + encodeURIComponent(entrezId);
+    var r    = await fetch(url);
+    console.log('[HPO] GET', url, r.status);
     var json = await r.json();
     _hpoCache[ensemblGeneId] = json;
     return json;
   } catch(e) {
+    console.error('[HPO] error:', e);
     _hpoCache[ensemblGeneId] = null;
     return null;
   }
@@ -1042,8 +1137,180 @@ async function loadHpo(ensemblGeneId) {
   phEl.innerHTML  = renderHpoSection(data.phenotypes);
 }
 
-function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl, ensemblGeneId, symbol) {
-  _shortState = { pdfUrl: pdfUrl, ensemblGeneId: ensemblGeneId, symbol: symbol };
+async function fetchClinvar(info) {
+  if (typeof info === 'string') info = { clnvid: info };
+  var clnvid = String(info.clnvid == null ? '' : info.clnvid);
+  var noId   = !clnvid || clnvid === 'NA' || clnvid === 'null' || clnvid === 'undefined';
+
+  if (noId) {
+    var chrom = String(info.chrom || '').replace(/^chr/i, '');
+    var pos   = String(info.pos   || '');
+    var hgvsg = String(info.hgvsg || '').replace(/^[^:]+:/, '');
+    if (!chrom || !pos || !hgvsg || hgvsg === 'NA') return null;
+    var cacheKey = 'search:' + chrom + ':' + pos + ':' + hgvsg;
+    if (cacheKey in _clinvarCache) return _clinvarCache[cacheKey];
+    try {
+      var searchUrl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&term=' +
+        encodeURIComponent(pos + '[chrpos]') + '+AND+' +
+        encodeURIComponent(hgvsg) + '+AND+' +
+        encodeURIComponent(chrom + '[chr]') + '&retmode=json';
+      var sr  = await fetch(searchUrl);
+      console.log('[ClinVar:search] GET', searchUrl, sr.status);
+      var sj  = await sr.json();
+      var ids = ((sj.esearchresult || {}).idlist || []);
+      if (!ids.length) { _clinvarCache[cacheKey] = null; return null; }
+      clnvid = ids.join(',');
+      _clinvarCache[cacheKey] = clnvid;
+    } catch(e) {
+      console.error('[ClinVar:search] error:', e);
+      return null;
+    }
+  }
+
+  if (clnvid in _clinvarCache && typeof _clinvarCache[clnvid] !== 'string') return _clinvarCache[clnvid];
+  try {
+    var ids = clnvid.split(',').map(function(s) {
+      return s.trim().replace(/^VCV0*/i, '');
+    }).filter(Boolean);
+    if (!ids.length) { _clinvarCache[clnvid] = null; return null; }
+    var url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=clinvar&id=' + ids.join(',') + '&retmode=json';
+    var r    = await fetch(url);
+    console.log('[ClinVar] GET', url, r.status);
+    var json = await r.json();
+    _clinvarCache[clnvid] = json.result || null;
+    return _clinvarCache[clnvid];
+  } catch(e) {
+    console.error('[ClinVar] error:', e);
+    _clinvarCache[clnvid] = null;
+    return null;
+  }
+}
+
+function sigBadgeColor(sig) {
+  var s = (sig || '').toLowerCase();
+  if (s === 'pathogenic')                return '#c62828';
+  if (s === 'likely pathogenic')         return '#e53935';
+  if (s === 'benign')                    return '#2e7d32';
+  if (s === 'likely benign')             return '#388e3c';
+  if (s.indexOf('conflicting') !== -1)   return '#e65100';
+  return '#757575';
+}
+
+function renderClinvarRecord(rec) {
+  if (!rec) return '';
+  var url    = 'https://www.ncbi.nlm.nih.gov/clinvar/variation/' + rec.uid + '/';
+  var gc     = rec.germline_classification || {};
+  var sig    = gc.description || '';
+  var traits = (gc.trait_set || []).map(function(t) { return esc(t.trait_name); }).filter(Boolean);
+  var molConseq = (rec.molecular_consequence_list || []).join(', ');
+  var html = '<div style="border:1px solid #dee2e6;border-radius:6px;padding:12px;margin-bottom:8px">';
+  html += '<div style="margin-bottom:8px"><a href="' + esc(url) + '" target="_blank" style="font-weight:600;font-size:14px">' + esc(rec.title || rec.accession) + '</a></div>';
+  if (sig) {
+    html += '<div style="margin-bottom:6px"><span style="display:inline-block;padding:2px 10px;border-radius:4px;font-size:12px;font-weight:600;color:#fff;background:' + sigBadgeColor(sig) + '">' + esc(sig) + '</span>';
+    if (gc.review_status) html += ' <span style="color:#666;font-size:12px">' + esc(gc.review_status) + '</span>';
+    html += '</div>';
+  }
+  if (traits.length) html += '<div style="font-size:13px;color:#333;margin-bottom:4px"><b>Conditions:</b> ' + traits.join('; ') + '</div>';
+  if (molConseq)     html += '<div style="font-size:12px;color:#555"><b>Consequence:</b> ' + esc(molConseq) + '</div>';
+  if (gc.last_evaluated && gc.last_evaluated.indexOf('1/01/01') === -1)
+    html += '<div style="font-size:12px;color:#888;margin-top:4px">Last evaluated: ' + esc(gc.last_evaluated) + '</div>';
+  html += '</div>';
+  return html;
+}
+
+async function loadClinvar(info) {
+  var el = document.getElementById('clinvar-content');
+  if (!el) return;
+  if (typeof info === 'string') info = { clnvid: info };
+  var clnvid     = String(info.clnvid == null ? '' : info.clnvid);
+  var hasClnvid  = clnvid && clnvid !== 'NA' && clnvid !== 'null' && clnvid !== 'undefined';
+  var hasFallback = !!(info.chrom && info.pos && info.hgvsg && info.hgvsg !== 'NA');
+  if (!hasClnvid && !hasFallback) {
+    el.innerHTML = '<span class="info-placeholder">No ClinVar record for this variant.</span>';
+    return;
+  }
+  el.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
+  var result = await fetchClinvar(info);
+  if (!result) { el.innerHTML = '<span class="info-placeholder">No ClinVar data found.</span>'; return; }
+  var uids = result.uids || [];
+  if (!uids.length) { el.innerHTML = '<span class="info-placeholder">No ClinVar records found.</span>'; return; }
+  el.innerHTML = uids.map(function(uid) { return renderClinvarRecord(result[uid]); }).join('');
+}
+
+async function fetchAou(variantId) {
+  if (variantId in _aouCache) return _aouCache[variantId];
+  var url = 'https://public.api.researchallofus.org/v1/genomics/variant-details/' + encodeURIComponent(variantId);
+  try {
+    var r    = await fetch(url);
+    console.log('[AllOfUs] GET', url, r.status);
+    var json = await r.json();
+    _aouCache[variantId] = json.statusCode ? null : json;
+    return _aouCache[variantId];
+  } catch(e) {
+    console.error('[AllOfUs] error:', e);
+    _aouCache[variantId] = null;
+    return null;
+  }
+}
+
+function renderAou(data, variantId) {
+  var pops = [
+    { key: 'afr',   label: 'African'        },
+    { key: 'eas',   label: 'East Asian'     },
+    { key: 'eur',   label: 'European'       },
+    { key: 'amr',   label: 'Americas'       },
+    { key: 'mid',   label: 'Middle Eastern' },
+    { key: 'sas',   label: 'South Asian'    },
+    { key: 'oth',   label: 'Remaining'      },
+    { key: 'total', label: 'Total'          },
+  ];
+  var browserUrl = 'https://databrowser.researchallofus.org/snvsindels/' + encodeURIComponent(variantId);
+  var html = '<div style="padding:8px 12px">';
+  html += '<div style="margin-bottom:10px;font-size:13px"><a href="' + esc(browserUrl) + '" target="_blank">' +
+    esc(variantId) + ' on All of Us Data Browser ' +
+    '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
+    '</a></div>';
+  html += '<table style="border-collapse:collapse;font-size:13px;width:100%"><thead><tr>';
+  ['Population', 'Allele Count', 'Allele Number', 'Allele Frequency', 'Homozygote Count'].forEach(function(h) {
+    html += '<th style="text-align:left;padding:4px 8px;border-bottom:2px solid #49A942;white-space:nowrap">' + h + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+  pops.forEach(function(pop, i) {
+    var af  = data[pop.key + 'AlleleFrequency'];
+    var afStr = (af == null) ? '—' : (af === 0 ? '0' : af < 0.001 ? af.toExponential(2) : af.toFixed(4));
+    var bold  = pop.key === 'total' ? 'font-weight:600;' : '';
+    var bg    = i % 2 ? 'background:#f9f9f9;' : '';
+    html += '<tr style="' + bg + '">';
+    html += '<td style="padding:4px 8px;' + bold + '">' + pop.label + '</td>';
+    html += '<td style="padding:4px 8px;' + bold + '">' + (data[pop.key + 'AlleleCount']    ?? '—') + '</td>';
+    html += '<td style="padding:4px 8px;' + bold + '">' + (data[pop.key + 'AlleleNumber']   ?? '—') + '</td>';
+    html += '<td style="padding:4px 8px;' + bold + '">' + afStr + '</td>';
+    html += '<td style="padding:4px 8px;' + bold + '">' + (data[pop.key + 'HomozygoteCount'] ?? '—') + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
+async function loadAou(variantId) {
+  var el = document.getElementById('aou-content');
+  if (!el) return;
+  if (!variantId || variantId === 'NA') {
+    el.innerHTML = '<span class="info-placeholder">No All of Us data for this variant.</span>';
+    return;
+  }
+  el.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
+  var data = await fetchAou(variantId);
+  el.innerHTML = data
+    ? renderAou(data, variantId)
+    : '<span class="info-placeholder">No All of Us record found.</span>';
+}
+
+function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl, ensemblGeneId, symbol, clnvid, chrom, pos, hgvsg, familyId, variantId) {
+  var clinvarInfo = { clnvid: clnvid || null, chrom: String(chrom || ''), pos: String(pos || ''), hgvsg: String(hgvsg || '') };
+  var aouId = variantId ? String(variantId).replace(/^chr/i, '') : null;
+  _shortState = { pdfUrl: pdfUrl, ensemblGeneId: ensemblGeneId, symbol: symbol, clinvarInfo: clinvarInfo, aouId: aouId };
+  updateSlideDownloads(familyId);
   clearTimeout(_pdfTimeout);
   _pdfTimeout = setTimeout(function() { document.getElementById('viewer-pdf').src = pdfUrl; }, 50);
 
@@ -1054,14 +1321,17 @@ function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl,
   setOrLoad(activeTab, 'igv',            'igv',       htmlUrl + '#row=' + rowId, loadIgvIframe);
   setOrLoad(activeTab, 'spliceai-lookup','spliceAI',  spliceaiUrl, loadSpliceAI);
   setOrLoad(activeTab, 'ucsc-short',     'ucscShort', ucscVal, function(v) { loadUcsc('viewer-ucsc-short', 'ucsc-link-short', v); });
+  setOrLoad(activeTab, 'databases',      'clinvar',   clinvarInfo, loadClinvar);
+  setOrLoad(activeTab, 'databases',      'aou',       aouId,       loadAou);
   setOrLoad(activeTab, 'gene-info',      'geneInfo',  ensemblGeneId, loadGeneInfo);
   setOrLoad(activeTab, 'panelapp',       'panelApp',  paVal, function(v) { loadPanelApp(v.symbol, v.geneId); });
   setOrLoad(activeTab, 'hpo',            'hpo',       ensemblGeneId, loadHpo);
   switchTab(document.getElementById('viewer-short'), activeTab);
 }
 
-function loadStrucSample(pdfUrl, samplotUrl, svpvUrl, ucscUrl, ucscRenderUrl, ensemblGeneId, symbol) {
+function loadStrucSample(pdfUrl, samplotUrl, svpvUrl, ucscUrl, ucscRenderUrl, ensemblGeneId, symbol, familyId) {
   _strucState = { pdfUrl: pdfUrl, ensemblGeneId: ensemblGeneId, symbol: symbol };
+  updateSlideDownloads(familyId);
   clearTimeout(_pdfTimeout);
   _pdfTimeout = setTimeout(function() { document.getElementById('viewer-pdf').src = pdfUrl; }, 50);
 
@@ -1079,5 +1349,37 @@ function loadStrucSample(pdfUrl, samplotUrl, svpvUrl, ucscUrl, ucscRenderUrl, en
   setOrLoad(activeTab, 'hpo',       'hpo',      ensemblGeneId, loadHpo);
   switchTab(document.getElementById('viewer-struc'), activeTab);
 }
+
+function updateSlideDownloads(familyId) {
+  var base = 'by_family/' + familyId + '/' + familyId;
+  document.getElementById('slides-dl-pdf').href  = base + '.pdf';
+  document.getElementById('slides-dl-pptx').href = base + '.pptx';
+  document.getElementById('igv-dl-html').href    = base + '.igv_report.html';
+}
+
+function dlIconActivate(btn, e) {
+  var tabBtn = btn.parentElement.querySelector('.tab-btn');
+  if (tabBtn && !tabBtn.classList.contains('active')) {
+    e.preventDefault();
+    tabBtn.click();
+    return true;
+  }
+  return false;
+}
+
+function toggleDlDropdown(btn, e) {
+  if (dlIconActivate(btn, e)) return;
+  e.stopPropagation();
+  var menu = document.getElementById('slides-dl-menu');
+  var rect = btn.getBoundingClientRect();
+  menu.style.top  = (rect.bottom + 2) + 'px';
+  menu.style.left = rect.left + 'px';
+  menu.classList.toggle('open');
+}
+
+document.addEventListener('click', function() {
+  var m = document.getElementById('slides-dl-menu');
+  if (m) m.classList.remove('open');
+});
 
 </script>
