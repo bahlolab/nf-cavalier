@@ -282,10 +282,10 @@ datatable(
 ```{=html}
   </div>
   <div id="tab-vtab-relatedness" class="tab-panel">
-    <iframe src="qc/somalier.html" style="width:100%;height:800px;border:none;display:block;"></iframe>
+    <iframe id="iframe-somalier" style="width:100%;height:800px;border:none;display:block;"></iframe>
   </div>
   <div id="tab-vtab-ancestry" class="tab-panel">
-    <iframe src="qc/somalier-ancestry.html" style="width:100%;height:800px;border:none;display:block;"></iframe>
+    <iframe id="iframe-somalier-ancestry" style="width:100%;height:800px;border:none;display:block;"></iframe>
   </div>
 </div>
 
@@ -459,8 +459,8 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; transition: opacity 0.3s 
 #app-header {
   background-color: #49A942;
   color: white;
-  padding: 14px 28px;
-  margin-bottom: 14px;
+  padding: 9px 28px;
+  margin-bottom: 9px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.18);
   display: flex;
   align-items: center;
@@ -521,7 +521,7 @@ table.dataTable thead td {
 }
 .vtype-container  { margin-bottom: 14px; overflow-x: auto; }
 .viewer-container { overflow: hidden; }
-#shared-panels    { margin-top: 14px; overflow: hidden; border: 1px solid #dee2e6; border-radius: 6px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
+#shared-panels    { overflow: hidden; border: 1px solid #dee2e6; border-top: none; border-radius: 0 0 6px 6px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
 
 /* ── Tab bar ── */
 .tab-bar {
@@ -762,6 +762,7 @@ var _cacheLimit = 200;
 var _inflight   = new Map();
 var _activeTabs = { 'vtype-container': 'vtab-short', 'viewer-short': 'slides', 'viewer-struc': 'slides', 'viewer-somalier': 'somalier-samples' };
 var _somalierIframesLoaded = false;
+var _somalierLoaded = { relatedness: false, ancestry: false };
 
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 var _extLink = '<svg width="11" height="11" style="vertical-align:-1px"><use href="#ico-ext"/></svg>';
@@ -866,6 +867,14 @@ document.addEventListener('click', function(e) {
       document.getElementById('viewer-somalier-pairs').src        = 'qc/somalier-pairs-tbl.html';
       document.getElementById('viewer-somalier-ancestry-tbl').src = 'qc/somalier-ancestry-tbl.html';
       _somalierIframesLoaded = true;
+    }
+    if (tab === 'vtab-relatedness' && !_somalierLoaded.relatedness) {
+      document.getElementById('iframe-somalier').src = 'qc/somalier.html';
+      _somalierLoaded.relatedness = true;
+    }
+    if (tab === 'vtab-ancestry' && !_somalierLoaded.ancestry) {
+      document.getElementById('iframe-somalier-ancestry').src = 'qc/somalier-ancestry.html';
+      _somalierLoaded.ancestry = true;
     }
     return;
   }
