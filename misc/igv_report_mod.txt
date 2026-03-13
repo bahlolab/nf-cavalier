@@ -26,5 +26,10 @@
     },
     configurable: true
   });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var tableContainer = document.getElementById('tableContainer');
+    if (tableContainer) tableContainer.style.display = 'none';
+  });
 })();
 </script>

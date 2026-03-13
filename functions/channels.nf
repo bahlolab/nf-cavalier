@@ -99,6 +99,16 @@ def cache_dir_channel() {
     }
 }
 
+def somalier_channel() {
+    Channel.value(
+        [
+            file("${params.somalier_dir}/sites.hg38.vcf.gz"      , checkIfExists: true).toAbsolutePath(),
+            file("${params.somalier_dir}/ancestry-labels-1kg.tsv", checkIfExists: true).toAbsolutePath(),
+            file("${params.somalier_dir}/1kg.somalier.tar.gz"    , checkIfExists: true).toAbsolutePath(),
+        ]
+    )
+}
+
 
 
 

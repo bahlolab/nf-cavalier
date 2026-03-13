@@ -38,6 +38,7 @@ workflow CAVALIER {
     pedigree_channel
     alignment_channel
     check
+    somalier
 
     main:
     /*
@@ -227,13 +228,15 @@ workflow CAVALIER {
 
     if (params.make_slides) {
         VAR_BROWSER(
-            path("${projectDir}/bin/variant_browser.Rmd"),
+            channel.value(path("${projectDir}/bin/variant_browser.Rmd")),
+            channel.value(path("${projectDir}/bin/datatable.Rmd")),
             short_cand,
             struc_cand,
             PDF_SPLIT.out          .flatten().map{ it.name }.collectFile(newLine:true, sort:true, name: 'slides.txt'),
             IGV_REPORT.out.combined.flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'igv_report.txt'),
             SVPV.out               .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'svpv.txt'),
-            SAMPLOT.out            .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'samplot.txt')
+            SAMPLOT.out            .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'samplot.txt'),
+            somalier
         )
     }
 

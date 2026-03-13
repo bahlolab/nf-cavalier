@@ -1,5 +1,5 @@
 ---
-pagetitle: "Variant Browser"
+pagetitle: "Cavalier Variant Browser"
 ---
 
 ```{r setup, include=FALSE}
@@ -24,6 +24,14 @@ dt_coldefs <- function(df, n_default, n_internal = 3) {
 }
 ```
 
+```{r somalier_exists, echo=FALSE, results='asis'}
+cat(sprintf(
+  '<script>var _hasSomalier = %s; var _hasAncestry = %s;</script>\n',
+  tolower(file.exists("somalier.html")),
+  tolower(file.exists("somalier-ancestry.html"))
+))
+```
+
 ```{=html}
 <style>body { opacity: 0; }</style>
 <svg style="display:none"><defs>
@@ -41,13 +49,15 @@ dt_coldefs <- function(df, n_default, n_internal = 3) {
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="vtab-short">Short Variants</button>
     <button class="tab-btn"        data-tab="vtab-struc">Structural Variants</button>
+    <button class="tab-btn"        data-tab="vtab-relatedness">QC / Relatedness</button>
+    <button class="tab-btn"        data-tab="vtab-ancestry">Ancestry</button>
   </div>
   <div id="tab-vtab-short" class="tab-panel active" style="padding:12px;">
 ```
 
 ```{r load_short, include=FALSE}
 default_cols <-
-  c('family_id', 'SYMBOL', 'CHROM', 'POS', 'REF', 'ALT', 'Consequence', 'IMPACT', 'CLNSIG', 'gnomad_AF', 'CADD')
+  c('family_id', 'SYMBOL', 'inheritance', 'variant_id', 'Consequence', 'IMPACT', 'CLNSIG', 'gnomad_AF', 'CADD')
 
 variants <-
   read_csv("short_candidates.csv") %>%
@@ -117,7 +127,7 @@ datatable(
   filter = 'top', extensions = "Buttons",
   options = list(
     pageLength = 10, dom = 'Blfrtip', autoWidth = FALSE,
-    buttons = list(list(extend = 'colvis', columns = cd$colvis_targets)),
+    buttons = list(list(extend = 'colvis', columns = cd$colvis_targets), list(extend = 'csv', filename = 'short-variants'), list(extend = 'excel', filename = 'short-variants')),
     columnDefs = cd$col_defs,
     rowCallback = JS(paste0("
       function(row, data) {
@@ -162,7 +172,7 @@ datatable(
 
 ```{r load_struc, include=FALSE}
 default_cols_struc <-
-  c('family_id', 'SYMBOL', 'CHROM', 'POS', 'END', 'SVTYPE', 'SVLEN', 'Consequence', 'IMPACT', 'Max_AF')
+  c('family_id', 'SYMBOL', 'inheritance', 'SVTYPE','CHROM', 'POS', 'END', 'SVLEN', 'Consequence', 'IMPACT', 'Max_AF')
 
 struc_variants <-
   read_csv("struc_candidates.csv") %>%
@@ -239,7 +249,7 @@ datatable(
   filter = 'top', extensions = "Buttons",
   options = list(
     pageLength = 10, dom = 'Blfrtip', autoWidth = FALSE,
-    buttons = list(list(extend = 'colvis', columns = cd_s$colvis_targets)),
+    buttons = list(list(extend = 'colvis', columns = cd_s$colvis_targets), list(extend = 'csv', filename = 'structural-variants'), list(extend = 'excel', filename = 'structural-variants')),
     columnDefs = cd_s$col_defs,
     rowCallback = JS(paste0("
       function(row, data) {
@@ -271,6 +281,12 @@ datatable(
 
 ```{=html}
   </div>
+  <div id="tab-vtab-relatedness" class="tab-panel">
+    <iframe src="qc/somalier.html" style="width:100%;height:800px;border:none;display:block;"></iframe>
+  </div>
+  <div id="tab-vtab-ancestry" class="tab-panel">
+    <iframe src="qc/somalier-ancestry.html" style="width:100%;height:800px;border:none;display:block;"></iframe>
+  </div>
 </div>
 
 <div style="margin-top: 14px;">
@@ -279,9 +295,9 @@ datatable(
     <div class="tab-bar">
       <span class="tab-btn-wrap"><button class="tab-btn active" data-tab="slides">Slides</button><button class="dl-icon-btn" onclick="toggleDlDropdown(this,event)" title="Download slides"><svg width="12" height="12"><use href="#ico-dl"/></svg></button></span>
       <span class="tab-btn-wrap"><button class="tab-btn" data-tab="igv">IGV</button><a id="igv-dl-html" href="#" download class="dl-icon-btn" title="Download IGV report" onclick="dlIconActivate(this,event)"><svg width="12" height="12"><use href="#ico-dl"/></svg></a></span>
-      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="spliceai-lookup">SpliceAI Lookup</button><a id="spliceai-link" href="#" target="_blank" class="dl-icon-btn" title="Open SpliceAI Lookup" onclick="dlIconActivate(this,event)"><svg width="12" height="12"><use href="#ico-ext"/></svg></a></span>
-      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="ucsc-short">Genome Browser</button><a id="ucsc-link-short" href="#" target="_blank" class="dl-icon-btn" title="Open UCSC Genome Browser" onclick="dlIconActivate(this,event)"><svg width="12" height="12"><use href="#ico-ext"/></svg></a></span>
       <button class="tab-btn"        data-tab="databases">Databases</button>
+      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="ucsc-short">Genome Browser</button><a id="ucsc-link-short" href="#" target="_blank" class="dl-icon-btn" title="Open UCSC Genome Browser" onclick="dlIconActivate(this,event)"><svg width="12" height="12"><use href="#ico-ext"/></svg></a></span>
+      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="spliceai-lookup">SpliceAI Lookup</button><a id="spliceai-link" href="#" target="_blank" class="dl-icon-btn" title="Open SpliceAI Lookup" onclick="dlIconActivate(this,event)"><svg width="12" height="12"><use href="#ico-ext"/></svg></a></span>
       <button class="tab-btn"        data-tab="gene-info">Gene Info</button>
       <button class="tab-btn"        data-tab="panelapp">PanelApp</button>
       <button class="tab-btn"        data-tab="hpo">HPO</button>
@@ -347,6 +363,26 @@ datatable(
     <div id="tab-ucsc" class="tab-panel">
       <iframe id="viewer-ucsc"></iframe>
       <p class="citation"><a href="https://doi.org/10.1093/nar/gkaf1250" target="_blank">Casper et al. (2025) Nucleic Acids Research. doi:10.1093/nar/gkaf1250</a></p>
+    </div>
+  </div>
+
+  <div id="viewer-somalier" class="viewer-container" style="display:none;">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="somalier-samples">Somalier Samples</button>
+      <button class="tab-btn"       data-tab="somalier-pairs">Somalier Pairs</button>
+      <button class="tab-btn"       data-tab="somalier-ancestry-tbl">Somalier Ancestry</button>
+    </div>
+    <div id="tab-somalier-samples" class="tab-panel active">
+      <iframe id="viewer-somalier-samples" style="width:100%;height:800px;border:none;display:block;"></iframe>
+      <p class="citation"><a href="https://doi.org/10.1186/s13073-020-00761-2" target="_blank">Pedersen et al. (2020) Somalier: rapid relatedness estimation for cancer and germline studies using efficient genome sketches. Genome Medicine. doi:10.1186/s13073-020-00761-2</a></p>
+    </div>
+    <div id="tab-somalier-pairs" class="tab-panel">
+      <iframe id="viewer-somalier-pairs" style="width:100%;height:800px;border:none;display:block;"></iframe>
+      <p class="citation"><a href="https://doi.org/10.1186/s13073-020-00761-2" target="_blank">Pedersen et al. (2020) Somalier: rapid relatedness estimation for cancer and germline studies using efficient genome sketches. Genome Medicine. doi:10.1186/s13073-020-00761-2</a></p>
+    </div>
+    <div id="tab-somalier-ancestry-tbl" class="tab-panel">
+      <iframe id="viewer-somalier-ancestry-tbl" style="width:100%;height:800px;border:none;display:block;"></iframe>
+      <p class="citation"><a href="https://doi.org/10.1186/s13073-020-00761-2" target="_blank">Pedersen et al. (2020) Somalier: rapid relatedness estimation for cancer and germline studies using efficient genome sketches. Genome Medicine. doi:10.1186/s13073-020-00761-2</a></p>
     </div>
   </div>
 
@@ -605,7 +641,6 @@ table.dataTable thead td {
 .hgnc-data { padding: 12px 14px; }
 .info-placeholder { color: #aaa; font-size: 13px; padding: 8px 14px; display: block; }
 .section-summary { font-size: 12px; font-weight: 400; color: #777; }
-details.info-section[open] .section-summary { display: none; }
 
 .hgnc-header {
   display: flex;
@@ -725,7 +760,8 @@ var _strucState       = null;
 var _cache      = new Map();
 var _cacheLimit = 200;
 var _inflight   = new Map();
-var _activeTabs = { 'vtype-container': 'vtab-short', 'viewer-short': 'slides', 'viewer-struc': 'slides' };
+var _activeTabs = { 'vtype-container': 'vtab-short', 'viewer-short': 'slides', 'viewer-struc': 'slides', 'viewer-somalier': 'somalier-samples' };
+var _somalierIframesLoaded = false;
 
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 var _extLink = '<svg width="11" height="11" style="vertical-align:-1px"><use href="#ico-ext"/></svg>';
@@ -781,6 +817,8 @@ function loadSpliceAI(url) {
 // After DT's $(document).ready() has run, hide the struc panel.
 $(document).ready(function() {
   document.getElementById('tab-vtab-struc').classList.remove('active');
+  if (!_hasSomalier) document.querySelector('[data-tab="vtab-relatedness"]').style.display = 'none';
+  if (!_hasAncestry)  document.querySelector('[data-tab="vtab-ancestry"]').style.display = 'none';
   document.body.style.opacity = '1';
 });
 
@@ -811,10 +849,24 @@ document.addEventListener('click', function(e) {
     var isShort = tab === 'vtab-short';
     document.getElementById('viewer-short').style.display = isShort ? '' : 'none';
     document.getElementById('viewer-struc').style.display = isShort ? 'none' : '';
+    document.getElementById('viewer-somalier').style.display = 'none';
     var viewerId = isShort ? 'viewer-short' : 'viewer-struc';
     document.getElementById('shared-panels').style.display =
       _activeTabs[viewerId] in _sharedTabs ? '' : 'none';
     reloadSharedTabs(isShort ? _shortState : _strucState);
+    return;
+  }
+  if (tab === 'vtab-relatedness' || tab === 'vtab-ancestry') {
+    document.getElementById('viewer-short').style.display = 'none';
+    document.getElementById('viewer-struc').style.display = 'none';
+    document.getElementById('viewer-somalier').style.display = '';
+    document.getElementById('shared-panels').style.display = 'none';
+    if (!_somalierIframesLoaded) {
+      document.getElementById('viewer-somalier-samples').src      = 'qc/somalier-samples-tbl.html';
+      document.getElementById('viewer-somalier-pairs').src        = 'qc/somalier-pairs-tbl.html';
+      document.getElementById('viewer-somalier-ancestry-tbl').src = 'qc/somalier-ancestry-tbl.html';
+      _somalierIframesLoaded = true;
+    }
     return;
   }
 
@@ -1241,66 +1293,77 @@ async function fetchAou(variantId) {
   );
 }
 
-function renderAou(data, variantId) {
-  var pops = [
-    { key: 'afr',   label: 'African'        },
-    { key: 'eas',   label: 'East Asian'     },
-    { key: 'eur',   label: 'European'       },
-    { key: 'amr',   label: 'Americas'       },
-    { key: 'mid',   label: 'Middle Eastern' },
-    { key: 'sas',   label: 'South Asian'    },
-    { key: 'oth',   label: 'Remaining'      },
-    { key: 'total', label: 'Total'          },
-  ];
-  var browserUrl = 'https://databrowser.researchallofus.org/snvsindels/' + encodeURIComponent(variantId);
+// ── Shared frequency table ────────────────────────────────────────────────
+// Normalised row: { label, ac, an, af, hom }  (af may be null for AoU)
+// opts: { rows, total, linkHtml, citation }
+
+function _fmtAf(af) {
+  if (af == null) return '\u2014';
+  if (af === 0)   return '0';
+  return af < 0.0001 ? af.toExponential(2) : af.toFixed(4);
+}
+function _nullStr(v) { return v != null ? String(v) : '\u2014'; }
+
+function renderFreqTable(opts) {
   var html = '<div style="padding:8px 12px">';
-  html += '<div style="margin-bottom:10px;font-size:13px"><a href="' + esc(browserUrl) + '" target="_blank">' +
-    esc(variantId) + ' on All of Us Data Browser ' + _extLink +
-    '</a></div>';
   html += '<table style="border-collapse:collapse;font-size:13px;width:100%"><thead><tr>';
   ['Population', 'Allele Count', 'Allele Number', 'Allele Frequency', 'Homozygotes'].forEach(function(h) {
     html += '<th style="text-align:left;padding:4px 8px;border-bottom:2px solid #49A942;white-space:nowrap">' + h + '</th>';
   });
   html += '</tr></thead><tbody>';
-  pops.forEach(function(pop, i) {
-    var af  = data[pop.key + 'AlleleFrequency'];
-    var afStr = (af == null) ? '—' : (af === 0 ? '0' : af < 0.001 ? af.toExponential(2) : af.toFixed(4));
-    var bold  = pop.key === 'total' ? 'font-weight:600;' : '';
-    var bg    = i % 2 ? 'background:#f9f9f9;' : '';
+  opts.rows.forEach(function(r, i) {
+    var bg = i % 2 ? 'background:#f9f9f9;' : '';
     html += '<tr style="' + bg + '">';
-    html += '<td style="padding:4px 8px;' + bold + '">' + pop.label + '</td>';
-    html += '<td style="padding:4px 8px;' + bold + '">' + (data[pop.key + 'AlleleCount']    ?? '—') + '</td>';
-    html += '<td style="padding:4px 8px;' + bold + '">' + (data[pop.key + 'AlleleNumber']   ?? '—') + '</td>';
-    html += '<td style="padding:4px 8px;' + bold + '">' + afStr + '</td>';
-    html += '<td style="padding:4px 8px;' + bold + '">' + (data[pop.key + 'HomozygoteCount'] ?? '—') + '</td>';
+    html += '<td style="padding:4px 8px">'  + esc(r.label)     + '</td>';
+    html += '<td style="padding:4px 8px">'  + _nullStr(r.ac)   + '</td>';
+    html += '<td style="padding:4px 8px">'  + _nullStr(r.an)   + '</td>';
+    html += '<td style="padding:4px 8px">'  + _fmtAf(r.af)     + '</td>';
+    html += '<td style="padding:4px 8px">'  + _nullStr(r.hom)  + '</td>';
     html += '</tr>';
   });
-  html += '</tbody></table></div>';
+  var t = opts.total;
+  html += '<tr style="font-weight:600;border-top:1px solid #dee2e6">';
+  html += '<td style="padding:4px 8px">Total</td>';
+  html += '<td style="padding:4px 8px">' + _nullStr(t.ac)  + '</td>';
+  html += '<td style="padding:4px 8px">' + _nullStr(t.an)  + '</td>';
+  html += '<td style="padding:4px 8px">' + _fmtAf(t.af)    + '</td>';
+  html += '<td style="padding:4px 8px">' + _nullStr(t.hom) + '</td>';
+  html += '</tr></tbody></table>';
+  if (opts.linkHtml) html += '<div style="margin-top:8px;font-size:13px">' + opts.linkHtml + '</div>';
+  if (opts.citation) html += opts.citation;
+  html += '</div>';
   return html;
 }
 
-async function loadAou(variantId) {
-  var el = document.getElementById('aou-content');
+var _zeroPills = pill('AC: 0', afPillColor(0)) + ' ' + pill('AF: 0', afPillColor(0)) + ' ' + pill('HOM: 0', afPillColor(0));
+
+function _freqSumPills(total) {
+  var af = total.af != null ? total.af : (total.an ? total.ac / total.an : 0);
+  var c  = afPillColor(af);
+  return pill('AC: ' + _nullStr(total.ac), c) + ' ' + pill('AF: ' + _fmtAf(af), c) + ' ' + pill('HOM: ' + _nullStr(total.hom), c);
+}
+
+async function loadFreqPanel(cfg) {
+  var el = document.getElementById(cfg.elId);
   if (!el) return;
-  var aouSumEl = document.getElementById('aou-summary');
-  function aouSum(t) { if (aouSumEl) aouSumEl.innerHTML = t; }
-  if (!variantId || variantId === 'NA') {
-    el.innerHTML = '<span class="info-placeholder">No All of Us data for this variant.</span>';
-    aouSum('<em>no record</em>'); return;
+  var sumEl = document.getElementById(cfg.sumElId);
+  function setSum(t) { if (sumEl) sumEl.innerHTML = t; }
+  if (!cfg.variantId || cfg.variantId === 'NA') {
+    el.innerHTML = '<span class="info-placeholder">' + cfg.noDataMsg + '</span>';
+    setSum('<em>no record</em>'); return;
   }
   el.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
-  var data = await fetchAou(variantId);
-  if (!data) {
-    el.innerHTML = '<span class="info-placeholder">No All of Us record found.</span>';
-    aouSum(pill('AC: 0', afPillColor(0)) + ' ' + pill('AF: 0', afPillColor(0))); return;
+  var raw = await cfg.fetch(cfg.variantId);
+  if (!raw) {
+    el.innerHTML = '<span class="info-placeholder">' + cfg.notFoundMsg + '</span>';
+    setSum(_zeroPills); return;
   }
-  el.innerHTML = renderAou(data, variantId);
-  var ac = data.totalAlleleCount;
-  var af = data.totalAlleleFrequency;
-  var afStr = af == null ? '\u2014' : af === 0 ? '0' : af < 0.0001 ? af.toExponential(2) : af.toFixed(4);
-  var c = afPillColor(af || 0);
-  aouSum(pill('AC: ' + (ac ?? '\u2014'), c) + ' ' + pill('AF: ' + afStr, c));
+  var data = cfg.transform(raw, cfg.variantId);
+  el.innerHTML = renderFreqTable(data);
+  setSum(_freqSumPills(data.total));
 }
+
+// ── gnomAD ────────────────────────────────────────────────────────────────
 
 async function fetchGnomad(variantId) {
   var query = '{ variant(variantId: "' + variantId + '", dataset: gnomad_r4) { variant_id joint { ac an homozygote_count populations { id ac an homozygote_count } } } }';
@@ -1312,90 +1375,68 @@ async function fetchGnomad(variantId) {
   );
 }
 
-function renderGnomad(variant, variantId) {
-  var joint = variant.joint;
-  var pops  = joint.populations || [];
-  var ancIds = ['remaining', 'afr', 'nfe', 'amr', 'sas', 'asj', 'eas', 'fin', 'mid', 'ami'];
-  var nameMap = {
-    remaining: 'Remaining',
-    afr:       'African/African American',
-    nfe:       'European (non-Finnish)',
-    amr:       'Admixed American',
-    sas:       'South Asian',
-    asj:       'Ashkenazi Jewish',
-    eas:       'East Asian',
-    fin:       'European (Finnish)',
-    mid:       'Middle Eastern',
-    ami:       'Amish'
-  };
+var _gnomadAncIds = ['remaining', 'afr', 'nfe', 'amr', 'sas', 'asj', 'eas', 'fin', 'mid', 'ami'];
+var _gnomadNames  = { remaining: 'Remaining', afr: 'African/African American', nfe: 'European (non-Finnish)',
+  amr: 'Admixed American', sas: 'South Asian', asj: 'Ashkenazi Jewish',
+  eas: 'East Asian', fin: 'European (Finnish)', mid: 'Middle Eastern', ami: 'Amish' };
+
+function _transformGnomad(variant, variantId) {
+  var joint  = variant.joint;
   var popMap = {};
-  pops.forEach(function(p) { popMap[p.id] = p; });
-
-  var ancRows = ancIds.filter(function(id) { return popMap[id]; }).map(function(id) { return popMap[id]; });
-  ancRows.sort(function(a, b) { return b.ac !== a.ac ? b.ac - a.ac : b.an - a.an; });
-
-  function afStr(ac, an) {
-    if (ac === 0) return '0.000';
-    if (!an) return '\u2014';
-    var af = ac / an;
-    return af < 0.0001 ? af.toExponential(2) : af.toFixed(4);
-  }
-
+  (joint.populations || []).forEach(function(p) { popMap[p.id] = p; });
+  var rows = _gnomadAncIds.filter(function(id) { return popMap[id]; }).map(function(id) {
+    var p = popMap[id];
+    return { label: _gnomadNames[id] || id, ac: p.ac, an: p.an, af: p.an ? p.ac / p.an : 0, hom: p.homozygote_count };
+  });
+  rows.sort(function(a, b) { return a.label.localeCompare(b.label); });
   var gnomadUrl = 'https://gnomad.broadinstitute.org/variant/' + encodeURIComponent(variantId) + '?dataset=gnomad_r4';
-  var html = '<div style="padding:8px 12px">';
-  html += '<div style="margin-bottom:10px;font-size:13px"><a href="' + esc(gnomadUrl) + '" target="_blank">' + esc(variantId) + ' on gnomAD ' + _extLink + '</a></div>';
-
-  html += '<table style="border-collapse:collapse;font-size:13px;width:100%"><thead><tr>';
-  ['Population', 'Allele Count', 'Allele Number', 'Allele Frequency', 'Homozygotes'].forEach(function(h) {
-    html += '<th style="text-align:left;padding:4px 8px;border-bottom:2px solid #49A942;white-space:nowrap">' + h + '</th>';
-  });
-  html += '</tr></thead><tbody>';
-
-  ancRows.forEach(function(p, i) {
-    var bg = i % 2 ? 'background:#f9f9f9;' : '';
-    html += '<tr style="' + bg + '">';
-    html += '<td style="padding:4px 8px">' + esc(nameMap[p.id] || p.id) + '</td>';
-    html += '<td style="padding:4px 8px">' + p.ac + '</td>';
-    html += '<td style="padding:4px 8px">' + p.an + '</td>';
-    html += '<td style="padding:4px 8px">' + afStr(p.ac, p.an) + '</td>';
-    html += '<td style="padding:4px 8px">' + p.homozygote_count + '</td>';
-    html += '</tr>';
-  });
-
-  html += '<tr style="font-weight:600;border-top:1px solid #dee2e6">';
-  html += '<td style="padding:4px 8px">Total</td>';
-  html += '<td style="padding:4px 8px">' + joint.ac + '</td>';
-  html += '<td style="padding:4px 8px">' + joint.an + '</td>';
-  html += '<td style="padding:4px 8px">' + afStr(joint.ac, joint.an) + '</td>';
-  html += '<td style="padding:4px 8px">' + joint.homozygote_count + '</td>';
-  html += '</tr>';
-
-  html += '</tbody></table>';
-  html += '</div>';
-  return html;
+  return {
+    rows: rows,
+    total: { ac: joint.ac, an: joint.an, af: joint.an ? joint.ac / joint.an : 0, hom: joint.homozygote_count },
+    linkHtml: '<a href="' + esc(gnomadUrl) + '" target="_blank">' + esc(variantId) + ' on gnomAD ' + _extLink + '</a>',
+  };
 }
 
-async function loadGnomad(variantId) {
-  var el = document.getElementById('gnomad-content');
-  if (!el) return;
-  var gnSumEl = document.getElementById('gnomad-summary');
-  function gnSum(t) { if (gnSumEl) gnSumEl.innerHTML = t; }
-  if (!variantId || variantId === 'NA') {
-    el.innerHTML = '<span class="info-placeholder">No gnomAD data for this variant.</span>';
-    gnSum('<em>no record</em>'); return;
-  }
-  el.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
-  var data = await fetchGnomad(variantId);
-  if (!data) {
-    el.innerHTML = '<span class="info-placeholder">No gnomAD record found.</span>';
-    gnSum(pill('AC: 0', afPillColor(0)) + ' ' + pill('AF: 0', afPillColor(0))); return;
-  }
-  el.innerHTML = renderGnomad(data, variantId);
-  var j = data.joint;
-  var af = j.an ? j.ac / j.an : 0;
-  var afStr = af === 0 ? '0' : af < 0.0001 ? af.toExponential(2) : af.toFixed(4);
-  var c = afPillColor(af);
-  gnSum(pill('AC: ' + j.ac, c) + ' ' + pill('AF: ' + afStr, c));
+function loadGnomad(variantId) {
+  return loadFreqPanel({ elId: 'gnomad-content', sumElId: 'gnomad-summary',
+    noDataMsg: 'No gnomAD data for this variant.', notFoundMsg: 'No gnomAD record found.',
+    variantId: variantId, fetch: fetchGnomad, transform: _transformGnomad });
+}
+
+// ── All of Us ─────────────────────────────────────────────────────────────
+
+var _aouPopKeys = [
+  { key: 'afr', label: 'African'        },
+  { key: 'eas', label: 'East Asian'     },
+  { key: 'eur', label: 'European'       },
+  { key: 'amr', label: 'Americas'       },
+  { key: 'mid', label: 'Middle Eastern' },
+  { key: 'sas', label: 'South Asian'    },
+  { key: 'oth', label: 'Remaining'      },
+];
+
+function _transformAou(data, variantId) {
+  var rows = _aouPopKeys.map(function(pop) {
+    return { label: pop.label,
+      ac:  data[pop.key + 'AlleleCount'],
+      an:  data[pop.key + 'AlleleNumber'],
+      af:  data[pop.key + 'AlleleFrequency'],
+      hom: data[pop.key + 'HomozygoteCount'] };
+  });
+  rows.sort(function(a, b) { return a.label.localeCompare(b.label); });
+  var browserUrl = 'https://databrowser.researchallofus.org/snvsindels/' + encodeURIComponent(variantId);
+  return {
+    rows: rows,
+    total: { ac: data.totalAlleleCount, an: data.totalAlleleNumber,
+             af: data.totalAlleleFrequency, hom: data.totalHomozygoteCount },
+    linkHtml: '<a href="' + esc(browserUrl) + '" target="_blank">' + esc(variantId) + ' on All of Us Data Browser ' + _extLink + '</a>'
+  };
+}
+
+function loadAou(variantId) {
+  return loadFreqPanel({ elId: 'aou-content', sumElId: 'aou-summary',
+    noDataMsg: 'No All of Us data for this variant.', notFoundMsg: 'No All of Us record found.',
+    variantId: variantId, fetch: fetchAou, transform: _transformAou });
 }
 
 function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl, ensemblGeneId, symbol, clnvid, chrom, pos, hgvsg, familyId, variantId) {
