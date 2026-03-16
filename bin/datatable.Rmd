@@ -17,7 +17,23 @@ knitr::opts_chunk$set(
 ```
 
 ```{r table, echo=FALSE}
-df <- read_tsv(params$input)
+df <-
+  read_tsv(params$input) %>%
+  rename_with(~ str_replace(., "^#", ""))
+
+if (all(c('sample_a', 'sample_b', 'relatedness', 'expected_relatedness') %in% colnames(df))) {
+  df <-
+    select(df, sample_a, sample_b, relatedness, expected_relatedness, everything()) %>%
+    mutate(
+      delta_relatedness =
+        if_else(
+          expected_relatedness != -1,
+          abs(expected_relatedness - relatedness),
+          NA_real_
+        ),
+        .after = expected_relatedness
+    )
+}
 
 datatable(
   df %>% mutate(across(where(~ is.character(.) && n_distinct(.) <= 10), as.factor)),

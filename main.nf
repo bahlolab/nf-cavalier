@@ -11,7 +11,6 @@ workflow {
 
     validate_params()
 
-    
     SETUP()
 
     QC(
@@ -33,6 +32,7 @@ workflow {
             SETUP.out.pedigree_channel,
             SETUP.out.alignment_channel,
             SETUP.out.check,
+            SETUP.out.versions,
             QC.out.somalier
         )
     }

@@ -11,7 +11,7 @@ process IGV_REPORT {
     */
 
     input:
-    tuple val(fam), val(sites), path(ped), path(vcf), path(tbi), val(ids), path(bams), path(bais) // bams can be BAM or CRAM, bais can be .bai or .crai
+    tuple val(fam), val(sites), path(vcf), path(tbi), val(ids), path(bams), path(bais) // bams can be BAM or CRAM, bais can be .bai or .crai
     tuple path(ref), path(ref_fai)
     path igv_report_mod
 

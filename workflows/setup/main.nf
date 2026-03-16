@@ -74,5 +74,6 @@ workflow SETUP {
     vcfanno_binary    = STORE.out.filter { it.name ==~ /.*vcfanno.*/}.first()
     pedigree_channel  = pedigree_channel
     alignment_channel = alignment_channel
+    versions          = INIT_CACHE.out.versions
     check             = check
 }

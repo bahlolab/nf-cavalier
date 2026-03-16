@@ -38,6 +38,7 @@ workflow CAVALIER {
     pedigree_channel
     alignment_channel
     check
+    versions
     somalier
 
     main:
@@ -95,7 +96,6 @@ workflow CAVALIER {
     IGV_REPORT(
         FILTER.out.short_igv.map { [it[0], it[1].text.trim()] }
             .join(samples_short)
-            .join(pedigree_channel)
             .join(SPLIT_VEP.out.vcf.filter {it[0] == 'SHORT' }.map { it[[1,2,3]] })
             .join(alignment_channel),
         ref_fasta_channel(),
@@ -226,18 +226,36 @@ workflow CAVALIER {
         'struc_candidates.csv'
     )
 
+    safe_params = params.collectMany { k, v ->
+        try   { groovy.json.JsonOutput.toJson(v); [[k, v]] }
+        catch (_e) { try { [[k, v.toString()]] } catch (_e2) { [] } }
+    }.collectEntries()
+
+    params_channel = Channel
+        .value(
+            groovy.json.JsonOutput.prettyPrint(
+                groovy.json.JsonOutput.toJson(safe_params)
+            )
+        )
+        .collectFile(sort:false, name: 'params.json')   
+
     if (params.make_slides) {
         VAR_BROWSER(
-            channel.value(path("${projectDir}/bin/variant_browser.Rmd")),
-            channel.value(path("${projectDir}/bin/datatable.Rmd")),
+            path("${projectDir}/bin/variant_browser.Rmd"),
+            path("${projectDir}/bin/datatable.Rmd"),
             short_cand,
             struc_cand,
             PDF_SPLIT.out          .flatten().map{ it.name }.collectFile(newLine:true, sort:true, name: 'slides.txt'),
             IGV_REPORT.out.combined.flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'igv_report.txt'),
             SVPV.out               .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'svpv.txt'),
             SAMPLOT.out            .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'samplot.txt'),
-            somalier
+            somalier,
+            params_channel,
+            versions,
+            gene_set
         )
     }
+
+    
 
 }

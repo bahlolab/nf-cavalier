@@ -17,7 +17,10 @@ process VAR_BROWSER {
     path svpv
     path samplot
     tuple path(pairs), path(samples), path(ancestry), path(somalier_html), path(ancestry_html)
-
+    path(params_json)
+    path(versions)
+    path(gene_set)
+    
     output:
     path "variant_browser.html"
     path "*-tbl.html", optional: true
@@ -25,9 +28,9 @@ process VAR_BROWSER {
     script:
     if (pairs)
     """
-    Rscript -e "rmarkdown::render('$table_rmd', params=list(input='$pairs')   , output_file='somalier-pairs-tbl.html')"
-    Rscript -e "rmarkdown::render('$table_rmd', params=list(input='$samples') , output_file='somalier-samples-tbl.html')"
-    Rscript -e "rmarkdown::render('$table_rmd', params=list(input='$ancestry'), output_file='somalier-ancestry-tbl.html')"
+    Rscript -e "rmarkdown::render('$table_rmd', params=list(input='$pairs'   , prefix='somalier-pairs')   , output_file='somalier-pairs-tbl.html')"
+    Rscript -e "rmarkdown::render('$table_rmd', params=list(input='$samples' , prefix='somalier-samples') , output_file='somalier-samples-tbl.html')"
+    Rscript -e "rmarkdown::render('$table_rmd', params=list(input='$ancestry', prefix='somalier-ancestry'), output_file='somalier-ancestry-tbl.html')"
     Rscript -e "rmarkdown::render('$browser_rmd')"
     """
     else

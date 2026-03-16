@@ -32,6 +32,19 @@ cat(sprintf(
 ))
 ```
 
+```{r params_json, echo=FALSE, results='asis'}
+params_json_raw <- if (file.exists("params.json")) {
+  readr::read_file("params.json")
+} else {
+  "{}"
+}
+params_json_escaped <- gsub('\\', '\\\\', params_json_raw, fixed = TRUE)
+params_json_escaped <- gsub('`',  '\\`',  params_json_escaped, fixed = TRUE)
+params_json_escaped <- gsub('$',  '\\$',  params_json_escaped, fixed = TRUE)
+cat(sprintf('<script>var _paramsJson = `%s`;</script>\n', params_json_escaped))
+cat(sprintf('<script>var _reportTime = "%s";</script>\n', format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")))
+```
+
 ```{=html}
 <style>body { opacity: 0; }</style>
 <svg style="display:none"><defs>
@@ -51,6 +64,7 @@ cat(sprintf(
     <button class="tab-btn"        data-tab="vtab-struc">Structural Variants</button>
     <button class="tab-btn"        data-tab="vtab-relatedness">QC / Relatedness</button>
     <button class="tab-btn"        data-tab="vtab-ancestry">Ancestry</button>
+    <button class="tab-btn"        data-tab="vtab-metadata">Metadata</button>
   </div>
   <div id="tab-vtab-short" class="tab-panel active" style="padding:12px;">
 ```
@@ -282,10 +296,61 @@ datatable(
 ```{=html}
   </div>
   <div id="tab-vtab-relatedness" class="tab-panel">
-    <iframe id="iframe-somalier" style="width:100%;height:800px;border:none;display:block;"></iframe>
+    <iframe id="iframe-somalier" style="width:100%;height:700px;border:none;display:block;"></iframe>
   </div>
   <div id="tab-vtab-ancestry" class="tab-panel">
-    <iframe id="iframe-somalier-ancestry" style="width:100%;height:800px;border:none;display:block;"></iframe>
+    <iframe id="iframe-somalier-ancestry" style="width:100%;max-width:1200px;height:700px;border:none;display:block;margin:0 auto;"></iframe>
+  </div>
+  <div id="tab-vtab-metadata" class="tab-panel">
+    <div class="gene-info-panel">
+      <div class="info-section" open>
+        <div class="info-section-title info-section-title--static" style="cursor:default;">
+          Timestamp<span id="meta-report-time" style="font-weight:400;"></span>
+        </div>
+      </div>
+      <details class="info-section">
+        <summary class="info-section-title">Versions</summary>
+        <div style="padding:8px;">
+```
+
+```{r version, echo=FALSE}
+versions <- read_tsv('versions.tsv')
+
+datatable(versions, escape=FALSE, selection="none", rownames=FALSE, filter='top',
+  options=list(pageLength=10, dom='rtip', autoWidth=FALSE))
+```
+
+```{=html}
+        </div>
+      </details>
+      <details class="info-section">
+        <summary class="info-section-title">Gene Set</summary>
+        <div style="padding:8px;">
+```
+
+```{r gene_set, echo=FALSE}
+gene_set <-
+  tibble(ensembl_id = read_lines(Sys.glob("gene_set.*.txt"))) %>%
+  mutate(symbol = cavalier::hgnc_ensembl2sym(ensembl_id), .before = 1) %>%
+  arrange(symbol)
+
+datatable(gene_set, escape=FALSE, selection="none", rownames=FALSE, filter='top',
+  options=list(pageLength=10, dom='rtip', autoWidth=FALSE))
+```
+
+```{=html}
+        </div>
+      </details>
+      <details class="info-section">
+        <summary class="info-section-title">Run Parameters</summary>
+        <div style="margin-top:8px;">
+          <button id="meta-params-dl" class="dl-icon-btn" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:0.82em;margin-bottom:6px;" title="Download params.json">
+            <svg width="12" height="12"><use href="#ico-dl"/></svg> Download
+          </button>
+          <pre id="meta-params-content" style="background:#1e1e1e;color:#d4d4d4;padding:14px;border-radius:6px;overflow:auto;max-height:600px;font-size:0.85em;margin:0;"></pre>
+        </div>
+      </details>
+    </div>
   </div>
 </div>
 
@@ -373,15 +438,15 @@ datatable(
       <button class="tab-btn"       data-tab="somalier-ancestry-tbl">Somalier Ancestry</button>
     </div>
     <div id="tab-somalier-samples" class="tab-panel active">
-      <iframe id="viewer-somalier-samples" style="width:100%;height:800px;border:none;display:block;"></iframe>
+      <iframe id="viewer-somalier-samples"></iframe>
       <p class="citation"><a href="https://doi.org/10.1186/s13073-020-00761-2" target="_blank">Pedersen et al. (2020) Somalier: rapid relatedness estimation for cancer and germline studies using efficient genome sketches. Genome Medicine. doi:10.1186/s13073-020-00761-2</a></p>
     </div>
     <div id="tab-somalier-pairs" class="tab-panel">
-      <iframe id="viewer-somalier-pairs" style="width:100%;height:800px;border:none;display:block;"></iframe>
+      <iframe id="viewer-somalier-pairs"></iframe>
       <p class="citation"><a href="https://doi.org/10.1186/s13073-020-00761-2" target="_blank">Pedersen et al. (2020) Somalier: rapid relatedness estimation for cancer and germline studies using efficient genome sketches. Genome Medicine. doi:10.1186/s13073-020-00761-2</a></p>
     </div>
     <div id="tab-somalier-ancestry-tbl" class="tab-panel">
-      <iframe id="viewer-somalier-ancestry-tbl" style="width:100%;height:800px;border:none;display:block;"></iframe>
+      <iframe id="viewer-somalier-ancestry-tbl"></iframe>
       <p class="citation"><a href="https://doi.org/10.1186/s13073-020-00761-2" target="_blank">Pedersen et al. (2020) Somalier: rapid relatedness estimation for cancer and germline studies using efficient genome sketches. Genome Medicine. doi:10.1186/s13073-020-00761-2</a></p>
     </div>
   </div>
@@ -637,6 +702,7 @@ table.dataTable thead td {
 }
 .info-section[open] > .info-section-title::before { transform: rotate(0deg); }
 .info-section:not([open]) > .info-section-title::before { transform: rotate(-90deg); }
+.info-section-title--static::before { content: none; }
 
 .hgnc-data { padding: 12px 14px; }
 .info-placeholder { color: #aaa; font-size: 13px; padding: 8px 14px; display: block; }
@@ -761,8 +827,7 @@ var _cache      = new Map();
 var _cacheLimit = 200;
 var _inflight   = new Map();
 var _activeTabs = { 'vtype-container': 'vtab-short', 'viewer-short': 'slides', 'viewer-struc': 'slides', 'viewer-somalier': 'somalier-samples' };
-var _somalierIframesLoaded = false;
-var _somalierLoaded = { relatedness: false, ancestry: false };
+var _somalierLoaded = { tables: false, relatedness: false, ancestry: false };
 
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 var _extLink = '<svg width="11" height="11" style="vertical-align:-1px"><use href="#ico-ext"/></svg>';
@@ -817,9 +882,29 @@ function loadSpliceAI(url) {
 // Both panels start visible so DataTables can measure column widths during init.
 // After DT's $(document).ready() has run, hide the struc panel.
 $(document).ready(function() {
+  document.querySelectorAll('details.info-section').forEach(function(el) {
+    el.addEventListener('toggle', function() {
+      if (this.open) window.dispatchEvent(new Event('resize'));
+    });
+  });
   document.getElementById('tab-vtab-struc').classList.remove('active');
   if (!_hasSomalier) document.querySelector('[data-tab="vtab-relatedness"]').style.display = 'none';
   if (!_hasAncestry)  document.querySelector('[data-tab="vtab-ancestry"]').style.display = 'none';
+  document.getElementById('meta-report-time').innerHTML = pill(_reportTime, '#49A942');
+  var pre = document.getElementById('meta-params-content');
+  try {
+    pre.textContent = JSON.stringify(JSON.parse(_paramsJson), null, 2);
+  } catch(e) {
+    pre.textContent = _paramsJson;
+  }
+  document.getElementById('meta-params-dl').addEventListener('click', function() {
+    var blob = new Blob([_paramsJson], {type: 'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'params.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
   document.body.style.opacity = '1';
 });
 
@@ -837,6 +922,12 @@ function switchTab(container, tab) {
   document.getElementById('shared-panels').style.display = tab in _sharedTabs ? '' : 'none';
 }
 
+function setViewers(showShort, showStruc, showSomalier) {
+  document.getElementById('viewer-short').style.display    = showShort    ? '' : 'none';
+  document.getElementById('viewer-struc').style.display    = showStruc    ? '' : 'none';
+  document.getElementById('viewer-somalier').style.display = showSomalier ? '' : 'none';
+}
+
 // All tab switching
 document.addEventListener('click', function(e) {
   if (!e.target.matches('.tab-btn')) return;
@@ -848,33 +939,40 @@ document.addEventListener('click', function(e) {
   // Vtype tab: show the matching viewer, hide the other; sync shared panels
   if (tab === 'vtab-short' || tab === 'vtab-struc') {
     var isShort = tab === 'vtab-short';
-    document.getElementById('viewer-short').style.display = isShort ? '' : 'none';
-    document.getElementById('viewer-struc').style.display = isShort ? 'none' : '';
-    document.getElementById('viewer-somalier').style.display = 'none';
+    setViewers(isShort, !isShort, false);
     var viewerId = isShort ? 'viewer-short' : 'viewer-struc';
     document.getElementById('shared-panels').style.display =
       _activeTabs[viewerId] in _sharedTabs ? '' : 'none';
     reloadSharedTabs(isShort ? _shortState : _strucState);
     return;
   }
-  if (tab === 'vtab-relatedness' || tab === 'vtab-ancestry') {
-    document.getElementById('viewer-short').style.display = 'none';
-    document.getElementById('viewer-struc').style.display = 'none';
-    document.getElementById('viewer-somalier').style.display = '';
+  if (tab === 'vtab-metadata') {
+    setViewers(false, false, false);
     document.getElementById('shared-panels').style.display = 'none';
-    if (!_somalierIframesLoaded) {
+    return;
+  }
+  if (tab === 'vtab-relatedness' || tab === 'vtab-ancestry') {
+    setViewers(false, false, true);
+    document.getElementById('shared-panels').style.display = 'none';
+    if (!_somalierLoaded.tables) {
       document.getElementById('viewer-somalier-samples').src      = 'qc/somalier-samples-tbl.html';
       document.getElementById('viewer-somalier-pairs').src        = 'qc/somalier-pairs-tbl.html';
       document.getElementById('viewer-somalier-ancestry-tbl').src = 'qc/somalier-ancestry-tbl.html';
-      _somalierIframesLoaded = true;
+      _somalierLoaded.tables = true;
     }
-    if (tab === 'vtab-relatedness' && !_somalierLoaded.relatedness) {
-      document.getElementById('iframe-somalier').src = 'qc/somalier.html';
-      _somalierLoaded.relatedness = true;
+    if (tab === 'vtab-relatedness') {
+      if (!_somalierLoaded.relatedness) {
+        document.getElementById('iframe-somalier').src = 'qc/somalier.html';
+        _somalierLoaded.relatedness = true;
+      }
+      switchTab(document.getElementById('viewer-somalier'), 'somalier-pairs');
     }
-    if (tab === 'vtab-ancestry' && !_somalierLoaded.ancestry) {
-      document.getElementById('iframe-somalier-ancestry').src = 'qc/somalier-ancestry.html';
-      _somalierLoaded.ancestry = true;
+    if (tab === 'vtab-ancestry') {
+      if (!_somalierLoaded.ancestry) {
+        document.getElementById('iframe-somalier-ancestry').src = 'qc/somalier-ancestry.html';
+        _somalierLoaded.ancestry = true;
+      }
+      switchTab(document.getElementById('viewer-somalier'), 'somalier-ancestry-tbl');
     }
     return;
   }
@@ -1487,10 +1585,10 @@ function loadStrucSample(pdfUrl, samplotUrl, svpvUrl, ucscUrl, ucscRenderUrl, en
   var activeTab = _activeTabs['viewer-struc'];
   var ucscVal   = { url: ucscUrl, renderUrl: ucscRenderUrl };
   var paVal     = { symbol: symbol, geneId: ensemblGeneId };
-  setOrLoad(activeTab, 'svpv',           'svpv',          svpvUrl,      function(u) { svpvIframe.src = u; });
-  setOrLoad(activeTab, 'ucsc',           'ucsc',          ucscVal,      function(v) { loadUcsc('viewer-ucsc', 'ucsc-link', v); });
+  setOrLoad(activeTab, 'svpv',      'svpv',     svpvUrl,       function(u) { svpvIframe.src = u; });
+  setOrLoad(activeTab, 'ucsc',      'ucsc',     ucscVal,       function(v) { loadUcsc('viewer-ucsc', 'ucsc-link', v); });
   setOrLoad(activeTab, 'gene-info', 'geneInfo', ensemblGeneId, loadGeneInfo);
-  setOrLoad(activeTab, 'panelapp',  'panelApp', paVal,        function(v) { loadPanelApp(v.symbol, v.geneId); });
+  setOrLoad(activeTab, 'panelapp',  'panelApp', paVal,         function(v) { loadPanelApp(v.symbol, v.geneId); });
   setOrLoad(activeTab, 'hpo',       'hpo',      ensemblGeneId, loadHpo);
   switchTab(document.getElementById('viewer-struc'), activeTab);
 }
