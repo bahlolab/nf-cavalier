@@ -11,8 +11,9 @@ process IGV_REPORT {
     */
 
     input:
-    tuple val(fam), val(sites), path(ped), path(vcf), path(tbi), val(ids), path(bams), path(bais) // bams can be BAM or CRAM, bais can be .bai or .crai
+    tuple val(fam), val(sites), path(vcf), path(tbi), val(ids), path(bams), path(bais) // bams can be BAM or CRAM, bais can be .bai or .crai
     tuple path(ref), path(ref_fai)
+    path igv_report_mod
 
     output:
     tuple val(fam), path("${fam}.igv_report.html")  , emit: combined
@@ -35,5 +36,8 @@ cat > sites.bed <<< '${sites}'
 cat > cmds <<< '${cmds.join('\n')}'
 
 cat cmds | xargs -I {} -P $task.cpus /bin/bash -c "{}"
+
+sed -i "/<head>/r $igv_report_mod" "${fam}.igv_report.html"
+sed -i 's/const tableJson/var tableJson/; s/const sessionDictionary/var sessionDictionary/' "${fam}.igv_report.html"
 """
 }

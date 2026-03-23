@@ -3,6 +3,7 @@ process PDF_SPLIT {
     label 'C2M2T2'
     label 'qpdf'
     tag "$fam"
+    publishDir "${params.outdir}/by_family/$fam", mode: 'copy'
     /*
         - Speparate sample PDFs into individual genes, to by compiled by gene
     */
@@ -11,11 +12,11 @@ process PDF_SPLIT {
     tuple val(fam), path(pdf)
 
     output:
-    path("genes/*.pdf"), optional: true
+    path("varslides/*.pdf"), optional: true
 
     script:
     """
-    mkdir -p genes
+    mkdir -p varslides
 
     qpdf --json --json-key=outlines $pdf \\
       | awk '
@@ -25,26 +26,30 @@ process PDF_SPLIT {
 
           if (line ~ /:[[:space:]]*[^[:space:]]+[[:space:]]*-[[:space:]]*chr/) {
             sub(/.*:[[:space:]]*/, "", line)
+
+            match(line, /chr([0-9]+|[XY])-[^[:space:]]+/)
+            variant=substr(line, RSTART, RLENGTH)
+            gsub(/[",]+\$/, "", variant)
+
             sub(/[[:space:]]*-[[:space:]]*chr.*/, "", line)
             gene=toupper(line)
 
-            if (!(gene in seen)) { seen[gene]=1; order[++n]=gene }
-
-            # store pages in a 2D-ish array keyed by gene + index
-            k = ++cnt[gene]
-            page[gene, k] = p
+            key = "__" gene "__." variant
+            if (!(key in seen)) { seen[key]=1; order[++n]=key }
+            k = ++cnt[key]
+            page[key, k] = p
           }
         }
 
         END {
           for (i=1; i<=n; i++) {
-            gene = order[i]
+            key = order[i]
             s = ""
-            for (j=1; j<=cnt[gene]; j++) {
+            for (j=1; j<=cnt[key]; j++) {
               if (j>1) s = s ","
-              s = s page[gene, j]
+              s = s page[key, j]
             }
-            print "qpdf --empty --pages \\"$pdf\\" " s " -- \\"" "genes/${fam}." gene ".pdf\\""
+            print "qpdf --empty --pages \\"$pdf\\" " s " -- \\"varslides/${fam}." key ".pdf\\""
           }
         }
       ' \\

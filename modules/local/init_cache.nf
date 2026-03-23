@@ -19,6 +19,7 @@ process INIT_CACHE {
     output: 
     path('cavalier_options.*.json'), emit: options
     path('output/*')               , emit: genes
+    path('versions.tsv')           , emit: versions
 
     script:
     def lists = ""

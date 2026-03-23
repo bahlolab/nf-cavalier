@@ -1,0 +1,1637 @@
+---
+pagetitle: "Cavalier Variant Browser"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(DT)
+
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+
+# Build columnDefs and ColVis targets for a dataframe with n_default visible cols
+# and n_internal trailing internal cols (hidden, excluded from ColVis)
+dt_coldefs <- function(df, n_default, n_internal = 3) {
+  n        <- ncol(df)
+  internal <- (n - n_internal):(n - 1)
+  extra    <- if (n > n_default + n_internal) n_default:(n - n_internal - 1) else integer(0)
+  defs     <- list(list(visible = FALSE, targets = internal))
+  if (length(extra) > 0) defs <- c(defs, list(list(visible = FALSE, targets = extra)))
+  list(col_defs = defs, colvis_targets = 0:(n - n_internal - 1))
+}
+```
+
+```{r somalier_exists, echo=FALSE, results='asis'}
+cat(sprintf(
+  '<script>var _hasSomalier = %s; var _hasAncestry = %s;</script>\n',
+  tolower(file.exists("somalier.html")),
+  tolower(file.exists("somalier-ancestry.html"))
+))
+```
+
+```{r params_json, echo=FALSE, results='asis'}
+params_json_raw <- if (file.exists("params.json")) {
+  readr::read_file("params.json")
+} else {
+  "{}"
+}
+params_json_escaped <- gsub('\\', '\\\\', params_json_raw, fixed = TRUE)
+params_json_escaped <- gsub('`',  '\\`',  params_json_escaped, fixed = TRUE)
+params_json_escaped <- gsub('$',  '\\$',  params_json_escaped, fixed = TRUE)
+cat(sprintf('<script>var _paramsJson = `%s`;</script>\n', params_json_escaped))
+cat(sprintf('<script>var _reportTime = "%s";</script>\n', format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")))
+```
+
+```{=html}
+<style>body { opacity: 0; }</style>
+<svg style="display:none"><defs>
+  <symbol id="ico-dl"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="ico-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
+</defs></svg>
+<div id="vtype-container" class="vtype-container">
+  <div class="tab-bar">
+    <span id="app-title">CAVALIER</span>
+    <button class="tab-btn active" data-tab="vtab-short">Short Variants</button>
+    <button class="tab-btn"        data-tab="vtab-struc">Structural Variants</button>
+    <button class="tab-btn"        data-tab="vtab-relatedness">QC / Relatedness</button>
+    <button class="tab-btn"        data-tab="vtab-ancestry">Ancestry</button>
+    <button class="tab-btn"        data-tab="vtab-metadata">Metadata</button>
+    <div id="app-logo-wrap"><img src="https://www.wehi.edu.au/wp-content/uploads/2023/12/logo@2x-compressed.png" id="app-logo" alt="WEHI logo" height="30"></div>
+  </div>
+  <div id="tab-vtab-short" class="tab-panel active" style="padding:12px;">
+```
+
+```{r load_short, include=FALSE}
+default_cols <-
+  c('family_id', 'SYMBOL', 'inheritance', 'variant_id', 'Consequence', 'IMPACT', 'CLNSIG', 'gnomad_AF', 'CADD')
+
+variants <-
+  read_csv("short_candidates.csv") %>%
+  mutate(
+    gnomad_AF = replace_na(gnomad_AF, 0),
+    gnomad_AC = replace_na(gnomad_AC, 0),
+  )  %>% 
+  select(all_of(default_cols), everything()) %>%
+  left_join(
+    read_tsv('slides.txt', col_names = 'pdf') %>% 
+      tidyr::extract(
+        pdf,
+        into = c("family_id", "variant_id"),
+        regex = "^([^\\.]+).+\\.([^\\.]+)\\.pdf",
+        remove = FALSE
+      ) %>% 
+      mutate(
+        pdf = file.path('by_family', family_id, 'varslides', pdf)
+      ),
+    by = join_by(family_id, variant_id)
+  ) %>% 
+  left_join(
+    read_tsv('igv_report.txt', col_names = 'igv') %>% 
+      tidyr::extract(
+        igv,
+        into = c("family_id"),
+        regex = "^([^\\.]+)\\.",
+        remove = FALSE
+      ) %>% 
+      mutate(
+        igv = file.path('by_family', family_id, igv)
+      ),
+    by = join_by(family_id)
+  ) %>% 
+  group_by(family_id) %>% 
+  mutate(
+    row_id = row_number() - 1L
+  ) %>%
+  ungroup() %>%
+  mutate(
+    spliceai_url = str_c(
+      "https://spliceailookup.broadinstitute.org/#hg=38&variant=", URLencode(variant_id)
+    ),
+    ucsc_url = {
+      track <- str_c(
+        'track name="', VARIANT_CLASS, '" visibility=2 color=0,0,255\n',
+        CHROM, " ", POS, " ", POS +1L
+      )
+      str_c(
+        "https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&",
+        "position=", CHROM, ":", POS - 250, "-", POS + 250, "&",
+        "hgt.customText=", URLencode(track)
+      )
+    },
+    ucsc_render_url = str_replace(ucsc_url, 'hgTracks', 'hgRenderTracks')
+  )
+
+cd <- dt_coldefs(variants, length(default_cols), n_internal = 6)
+
+col_index_short <- function(COL) { which(names(variants) == COL) - 1L }
+```
+
+```{r show_short, echo=FALSE}
+datatable(
+  variants %>% mutate(across(where(~ is.character(.) && n_distinct(.) <= 10), as.factor)),
+  escape = FALSE, selection = "none", rownames = FALSE,
+  filter = 'top', extensions = "Buttons",
+  options = list(
+    pageLength = 10, dom = 'Blfrtip', autoWidth = FALSE,
+    buttons = list(list(extend = 'colvis', columns = cd$colvis_targets), list(extend = 'csv', filename = 'short-variants'), list(extend = 'excel', filename = 'short-variants')),
+    columnDefs = cd$col_defs,
+    rowCallback = JS(paste0("
+      function(row, data) {
+        $(row).attr('data-family-id',        data[", col_index_short('family_id'),      "]);
+        $(row).attr('data-pdf',             data[", col_index_short('pdf'),            "]);
+        $(row).attr('data-html',            data[", col_index_short('igv'),            "]);
+        $(row).attr('data-row-id',          data[", col_index_short('row_id'),         "]);
+        $(row).attr('data-spliceai-url',    data[", col_index_short('spliceai_url'),   "]);
+        $(row).attr('data-ucsc-url',        data[", col_index_short('ucsc_url'),       "]);
+        $(row).attr('data-ucsc-render-url', data[", col_index_short('ucsc_render_url'),"]);
+        $(row).attr('data-gene',            data[", col_index_short('Gene'),           "]);
+        $(row).attr('data-symbol',          data[", col_index_short('SYMBOL'),         "]);
+        $(row).attr('data-chrom',           data[", col_index_short('CHROM'),          "]);
+        $(row).attr('data-pos',             data[", col_index_short('POS'),            "]);
+        $(row).attr('data-variant-id',       data[", col_index_short('variant_id'),     "]);
+        $(row).attr('data-clnvid',          data[", col_index_short('CLNVID'),         "]);
+        $(row).attr('data-hgvsg',           data[", col_index_short('HGVSg'),          "]);
+        $(row).css('cursor', 'pointer');
+      }
+    "))
+  ),
+  callback = JS("
+    table.on('click', 'tbody tr', function() {
+      table.$('tr.selected-row').removeClass('selected-row');
+      $(this).addClass('selected-row');
+      loadSample(
+        $(this).data('pdf'), $(this).data('html'), Number($(this).data('row-id')),
+        $(this).data('spliceai-url'), $(this).data('ucsc-url'), $(this).data('ucsc-render-url'),
+        $(this).data('gene'), $(this).data('symbol'),
+        $(this).data('clnvid'), $(this).data('chrom'), $(this).data('pos'), $(this).data('hgvsg'),
+        $(this).data('family-id'), $(this).data('variant-id')
+      );
+    });
+  ")
+)
+```
+
+```{=html}
+  </div>
+  <div id="tab-vtab-struc" class="tab-panel active" style="padding:12px;">
+```
+
+```{r load_struc, include=FALSE}
+default_cols_struc <-
+  c('family_id', 'SYMBOL', 'inheritance', 'SVTYPE','CHROM', 'POS', 'END', 'SVLEN', 'Consequence', 'IMPACT', 'Max_AF')
+
+struc_variants <-
+  read_csv("struc_candidates.csv") %>%
+  select(all_of(default_cols_struc), everything()) %>%
+  left_join(
+    read_tsv('slides.txt', col_names = 'pdf') %>% 
+      tidyr::extract(
+        pdf,
+        into = c("family_id", "variant_id"),
+        regex = "^([^\\.]+).+\\.([^\\.]+)\\.pdf",
+        remove = FALSE
+      ) %>% 
+      mutate(
+        pdf = file.path('by_family', family_id, 'varslides', pdf)
+      ),
+    by = join_by(family_id, variant_id)
+  ) %>% 
+  left_join(
+    read_tsv('svpv.txt', col_names = 'svpv') %>% 
+      tidyr::extract(
+        svpv,
+        into = c("family_id", "CHROM", "POS", "SVTYPE"),
+        regex = "^([^\\.]+)\\.([^\\.]+)\\.([0-9]+)\\.([^\\.]+)",
+        remove = FALSE
+      ) %>% 
+      mutate(
+        POS = as.numeric(POS),
+        svpv = file.path("by_family", family_id, "svpv", svpv)
+      ),
+    by = c("family_id", "CHROM", "POS", "SVTYPE"),
+  ) %>% 
+  left_join(
+    read_tsv('samplot.txt', col_names = 'samplot') %>% 
+      tidyr::extract(
+        samplot,
+        into = c("family_id", "variant_id"),
+        regex = "([^\\.]+)\\.([^\\.]+)\\.png",
+        remove = FALSE
+      ) %>% 
+      mutate(
+        samplot = file.path("by_family", family_id, "samplot", samplot)
+      ),
+    by = c("family_id", "variant_id"),
+  ) %>% 
+  mutate(
+    ucsc_url = {
+      colour <- case_when(
+        SVTYPE == "DEL" ~ "255,0,0",
+        SVTYPE == "DUP" ~ "0,255,0",
+        TRUE ~ "0,0,255"
+      )
+      width <- pmax(250, END - POS)
+      track <- str_c(
+        'track name="', SVTYPE, '" visibility=2 color=', colour, "\n",
+        CHROM, " ", POS, " ", coalesce(END, POS + 1)
+      )
+      str_c(
+        "https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&",
+        "position=", CHROM, ":", POS - width, "-", END + width, "&",
+        "hgt.customText=", URLencode(track)
+      )
+    },
+    ucsc_render_url = str_replace(ucsc_url, 'hgTracks', 'hgRenderTracks')
+  )
+
+cd_s           <- dt_coldefs(struc_variants, length(default_cols_struc), n_internal = 5)
+col_index_struc <- function(COL) { which(names(struc_variants) == COL) - 1L }
+```
+
+```{r show_struc, echo=FALSE}
+datatable(
+  struc_variants %>% mutate(across(where(~ is.character(.) && n_distinct(.) <= 10), as.factor)),
+  escape = FALSE, selection = "none", rownames = FALSE,
+  filter = 'top', extensions = "Buttons",
+  options = list(
+    pageLength = 10, dom = 'Blfrtip', autoWidth = FALSE,
+    buttons = list(list(extend = 'colvis', columns = cd_s$colvis_targets), list(extend = 'csv', filename = 'structural-variants'), list(extend = 'excel', filename = 'structural-variants')),
+    columnDefs = cd_s$col_defs,
+    rowCallback = JS(paste0("
+      function(row, data) {
+        $(row).attr('data-family-id',         data[", col_index_struc('family_id'),      "]);
+        $(row).attr('data-pdf',              data[", col_index_struc('pdf'),            "]);
+        $(row).attr('data-svpv',             data[", col_index_struc('svpv'),           "]);
+        $(row).attr('data-samplot',          data[", col_index_struc('samplot'),        "]);
+        $(row).attr('data-ucsc-url',         data[", col_index_struc('ucsc_url'),       "]);
+        $(row).attr('data-ucsc-render-url',  data[", col_index_struc('ucsc_render_url'),"]);
+        $(row).attr('data-gene',             data[", col_index_struc('Gene'),           "]);
+        $(row).attr('data-symbol',           data[", col_index_struc('SYMBOL'),         "]);
+        $(row).css('cursor', 'pointer');
+      }
+    "))
+  ),
+  callback = JS("
+    table.on('click', 'tbody tr', function() {
+      table.$('tr.selected-row').removeClass('selected-row');
+      $(this).addClass('selected-row');
+      loadStrucSample(
+        $(this).data('pdf'), $(this).data('samplot'), $(this).data('svpv'),
+        $(this).data('ucsc-url'), $(this).data('ucsc-render-url'),
+        $(this).data('gene'), $(this).data('symbol'), $(this).data('family-id')
+      );
+    });
+  ")
+)
+```
+
+```{=html}
+  </div>
+  <div id="tab-vtab-relatedness" class="tab-panel">
+    <iframe id="iframe-somalier" style="width:100%;height:700px;border:none;display:block;"></iframe>
+  </div>
+  <div id="tab-vtab-ancestry" class="tab-panel">
+    <iframe id="iframe-somalier-ancestry" style="width:100%;max-width:1200px;height:700px;border:none;display:block;margin:0 auto;"></iframe>
+  </div>
+  <div id="tab-vtab-metadata" class="tab-panel">
+    <div class="gene-info-panel">
+      <div class="info-section" open>
+        <div class="info-section-title info-section-title--static" style="cursor:default;">
+          Timestamp<span id="meta-report-time" style="font-weight:400;"></span>
+        </div>
+      </div>
+      <details class="info-section">
+        <summary class="info-section-title">Versions</summary>
+        <div style="padding:8px;">
+```
+
+```{r version, echo=FALSE}
+versions <- read_tsv('versions.tsv')
+
+datatable(versions, escape=FALSE, selection="none", rownames=FALSE, filter='top',
+  options=list(pageLength=10, dom='rtip', autoWidth=FALSE))
+```
+
+```{=html}
+        </div>
+      </details>
+      <details class="info-section">
+        <summary class="info-section-title">Gene Set</summary>
+        <div style="padding:8px;">
+```
+
+```{r gene_set, echo=FALSE}
+gene_set <-
+  tibble(ensembl_id = read_lines(Sys.glob("gene_set.*.txt"))) %>%
+  mutate(symbol = cavalier::hgnc_ensembl2sym(ensembl_id), .before = 1) %>%
+  arrange(symbol)
+
+datatable(gene_set, escape=FALSE, selection="none", rownames=FALSE, filter='top',
+  options=list(pageLength=10, dom='rtip', autoWidth=FALSE))
+```
+
+```{=html}
+        </div>
+      </details>
+      <details class="info-section">
+        <summary class="info-section-title">Run Parameters</summary>
+        <div style="margin-top:8px;">
+          <button id="meta-params-dl" class="dl-icon-btn" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:0.82em;margin-bottom:6px;" title="Download params.json">
+            <svg width="12" height="12"><use href="#ico-dl"/></svg> Download
+          </button>
+          <pre id="meta-params-content" style="background:#1e1e1e;color:#d4d4d4;padding:14px;border-radius:6px;overflow:auto;max-height:600px;font-size:0.85em;margin:0;"></pre>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 14px;">
+
+  <div id="viewer-short" class="viewer-container">
+    <div class="tab-bar">
+      <span class="tab-btn-wrap"><button class="tab-btn active" data-tab="slides">Slides</button><button class="dl-icon-btn" onclick="toggleDlDropdown(this,event)" title="Download slides"><svg width="12" height="12"><use href="#ico-dl"/></svg></button></span>
+      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="igv">IGV</button><a id="igv-dl-html" href="#" download class="dl-icon-btn" title="Download IGV report" onclick="dlIconActivate(this,event)"><svg width="12" height="12"><use href="#ico-dl"/></svg></a></span>
+      <button class="tab-btn"        data-tab="databases">Databases</button>
+      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="ucsc-short">Genome Browser</button><a id="ucsc-link-short" href="#" target="_blank" class="dl-icon-btn" title="Open UCSC Genome Browser" onclick="dlIconActivate(this,event)"><svg width="12" height="12"><use href="#ico-ext"/></svg></a></span>
+      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="spliceai-lookup">SpliceAI Lookup</button><a id="spliceai-link" href="#" target="_blank" class="dl-icon-btn" title="Open SpliceAI Lookup" onclick="dlIconActivate(this,event)"><svg width="12" height="12"><use href="#ico-ext"/></svg></a></span>
+      <button class="tab-btn"        data-tab="gene-info">Gene Info</button>
+      <button class="tab-btn"        data-tab="panelapp">PanelApp</button>
+      <button class="tab-btn"        data-tab="hpo">HPO</button>
+    </div>
+    <div id="tab-igv" class="tab-panel">
+      <iframe id="viewer-igv"></iframe>
+      <p class="citation"><a href="https://doi.org/10.1093/bioinformatics/btac830" target="_blank">Robinson et al. (2022) Bioinformatics. doi:10.1093/bioinformatics/btac830</a></p>
+    </div>
+    <div id="tab-spliceai-lookup" class="tab-panel">
+      <iframe id="viewer-spliceai"></iframe>
+    </div>
+    <div id="tab-ucsc-short" class="tab-panel">
+      <iframe id="viewer-ucsc-short"></iframe>
+      <p class="citation"><a href="https://doi.org/10.1093/nar/gkaf1250" target="_blank">Casper et al. (2025) Nucleic Acids Research. doi:10.1093/nar/gkaf1250</a></p>
+    </div>
+    <div id="tab-databases" class="tab-panel">
+      <div class="gene-info-panel">
+        <details class="info-section">
+          <summary class="info-section-title">ClinVar<span id="clinvar-summary" class="section-summary"></span></summary>
+          <div id="clinvar-content" class="hgnc-data">
+            <span class="info-placeholder">Select a variant to load ClinVar information.</span>
+          </div>
+        </details>
+        <details class="info-section">
+          <summary class="info-section-title">gnomAD<span id="gnomad-summary" class="section-summary"></span></summary>
+          <div id="gnomad-content" class="hgnc-data">
+            <span class="info-placeholder">Select a variant to load gnomAD data.</span>
+          </div>
+        </details>
+        <details class="info-section">
+          <summary class="info-section-title">All of Us<span id="aou-summary" class="section-summary"></span></summary>
+          <div id="aou-content" class="hgnc-data">
+            <span class="info-placeholder">Select a variant to load All of Us data.</span>
+          </div>
+        </details>
+      </div>
+      <p class="citation">
+        <a href="https://doi.org/10.1093/nar/gkx1153" target="_blank">Landrum et al. (2018) ClinVar. Nucleic Acids Research. doi:10.1093/nar/gkx1153</a><br>
+        <a href="https://doi.org/10.1038/s41586-020-2308-7" target="_blank">Karczewski et al. (2020) The mutational constraint spectrum quantified from variation in 141,456 humans. Nature. doi:10.1038/s41586-020-2308-7</a><br>
+        <a href="https://doi.org/10.1038/s41586-023-06957-x" target="_blank">All of Us Research Program (2024) Genomic data in the All of Us Research Program. Nature. doi:10.1038/s41586-023-06957-x</a>
+      </p>
+    </div>
+  </div>
+
+  <div id="viewer-struc" class="viewer-container" style="display:none;">
+    <div class="tab-bar">
+      <span class="tab-btn-wrap"><button class="tab-btn active" data-tab="slides">Slides</button><button class="dl-icon-btn" onclick="toggleDlDropdown(this,event)" title="Download slides"><svg width="12" height="12"><use href="#ico-dl"/></svg></button></span>
+      <button class="tab-btn"        data-tab="svpv">SVPV</button>
+      <button class="tab-btn"        data-tab="samplot">Samplot</button>
+      <span class="tab-btn-wrap"><button class="tab-btn" data-tab="ucsc">Genome Browser</button><a id="ucsc-link" href="#" target="_blank" class="dl-icon-btn" title="Open UCSC Genome Browser" onclick="dlIconActivate(this,event)"><svg width="12" height="12"><use href="#ico-ext"/></svg></a></span>
+      <button class="tab-btn"        data-tab="gene-info">Gene Info</button>
+      <button class="tab-btn"        data-tab="panelapp">PanelApp</button>
+      <button class="tab-btn"        data-tab="hpo">HPO</button>
+    </div>
+    <div id="tab-svpv" class="tab-panel">
+      <iframe id="viewer-svpv"></iframe>
+      <p class="citation"><a href="https://doi.org/10.1093/bioinformatics/btx117" target="_blank">Munro et al. (2017) Bioinformatics. doi:10.1093/bioinformatics/btx117</a></p>
+    </div>
+    <div id="tab-samplot" class="tab-panel">
+      <img id="viewer-samplot" style="display:block; width:100%; max-width:1000px; margin: 0 auto;">
+      <p class="citation"><a href="https://doi.org/10.1186/s13059-021-02380-5" target="_blank">Belyeu et al. (2021) Genome Biology. doi:10.1186/s13059-021-02380-5</a></p>
+    </div>
+    <div id="tab-ucsc" class="tab-panel">
+      <iframe id="viewer-ucsc"></iframe>
+      <p class="citation"><a href="https://doi.org/10.1093/nar/gkaf1250" target="_blank">Casper et al. (2025) Nucleic Acids Research. doi:10.1093/nar/gkaf1250</a></p>
+    </div>
+  </div>
+
+  <div id="viewer-somalier" class="viewer-container" style="display:none;">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="somalier-samples">Somalier Samples</button>
+      <button class="tab-btn"       data-tab="somalier-pairs">Somalier Pairs</button>
+      <button class="tab-btn"       data-tab="somalier-ancestry-tbl">Somalier Ancestry</button>
+    </div>
+    <div id="tab-somalier-samples" class="tab-panel active">
+      <iframe id="viewer-somalier-samples"></iframe>
+      <p class="citation"><a href="https://doi.org/10.1186/s13073-020-00761-2" target="_blank">Pedersen et al. (2020) Somalier: rapid relatedness estimation for cancer and germline studies using efficient genome sketches. Genome Medicine. doi:10.1186/s13073-020-00761-2</a></p>
+    </div>
+    <div id="tab-somalier-pairs" class="tab-panel">
+      <iframe id="viewer-somalier-pairs"></iframe>
+      <p class="citation"><a href="https://doi.org/10.1186/s13073-020-00761-2" target="_blank">Pedersen et al. (2020) Somalier: rapid relatedness estimation for cancer and germline studies using efficient genome sketches. Genome Medicine. doi:10.1186/s13073-020-00761-2</a></p>
+    </div>
+    <div id="tab-somalier-ancestry-tbl" class="tab-panel">
+      <iframe id="viewer-somalier-ancestry-tbl"></iframe>
+      <p class="citation"><a href="https://doi.org/10.1186/s13073-020-00761-2" target="_blank">Pedersen et al. (2020) Somalier: rapid relatedness estimation for cancer and germline studies using efficient genome sketches. Genome Medicine. doi:10.1186/s13073-020-00761-2</a></p>
+    </div>
+  </div>
+
+  <div id="shared-panels" style="display:none;">
+    <div id="tab-slides" class="tab-panel active">
+      <iframe id="viewer-pdf"></iframe>
+    </div>
+    <div id="tab-gene-info" class="tab-panel">
+      <div class="gene-info-panel">
+        <details class="info-section" open>
+          <summary class="info-section-title">HGNC</summary>
+          <div id="hgnc-data" class="hgnc-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+        <details class="info-section" open>
+          <summary class="info-section-title">Gene Summary</summary>
+          <div id="gene-summary" class="hgnc-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+      </div>
+    </div>
+    <div id="tab-panelapp" class="tab-panel">
+      <div class="gene-info-panel">
+        <details class="info-section" open>
+          <summary class="info-section-title">PanelApp Australia</summary>
+          <div id="panelapp-aus" class="panelapp-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+        <details class="info-section" open>
+          <summary class="info-section-title">Genomics England PanelApp</summary>
+          <div id="panelapp-gel" class="panelapp-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+      </div>
+      <p class="citation"><a href="https://doi.org/10.1038/s41588-019-0528-2" target="_blank">Martin et al. (2019) Nature Genetics. doi:10.1038/s41588-019-0528-2</a></p>
+    </div>
+    <div id="tab-hpo" class="tab-panel">
+      <div class="gene-info-panel">
+        <details class="info-section" open>
+          <summary class="info-section-title">Diseases</summary>
+          <div id="hpo-diseases" class="hgnc-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+        <details class="info-section" open>
+          <summary class="info-section-title">Phenotypes</summary>
+          <div id="hpo-phenotypes" class="hgnc-data">
+            <span class="info-placeholder">Select a variant to load gene information.</span>
+          </div>
+        </details>
+      </div>
+      <p class="citation"><a href="https://doi.org/10.1093/nar/gkaa1043" target="_blank">Köhler et al. (2021) Nucleic Acids Research. doi:10.1093/nar/gkaa1043</a></p>
+    </div>
+  </div>
+
+</div>
+
+<!-- floating download menu, positioned by JS -->
+<div class="dl-dropdown-menu" id="slides-dl-menu">
+  <a id="slides-dl-pdf"  href="#" download class="dl-item">Download slides PDF</a>
+  <a id="slides-dl-pptx" href="#" download class="dl-item">Download slides PPTX</a>
+</div>
+```
+
+<style>
+/* ── Global ── */
+body { font-family: 'Segoe UI', system-ui, sans-serif; transition: opacity 0.3s ease-in; }
+
+/* ── Header (merged into vtype tab-bar) ── */
+#vtype-container .tab-bar {
+  background: #49A942;
+  border-radius: 6px 6px 0 0;
+  border-bottom-color: #dee2e6;
+  padding-bottom: 6px;
+  align-items: center;
+}
+#vtype-container .tab-btn { bottom: -9px; }
+#app-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: white;
+  padding: 8px 12px 8px 4px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  position: relative;
+  bottom: -2px;
+}
+#app-logo-wrap {
+  background-color: white;
+  border-radius: 4px;
+  padding: 3px 7px;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  position: relative;
+  bottom: -2px;
+}
+#app-logo {
+  height: 30px;
+  width: auto;
+}
+
+/* ── DataTable ── */
+table.dataTable tbody tr       { transition: background 0.12s; }
+table.dataTable tbody tr:hover td { background-color: #f0faf0 !important; }
+tr.selected-row td             { background-color: #d6f0d5 !important; }
+table.dataTable thead th       { background-color: #f6f6f6; border-bottom: 2px solid #49A942 !important; }
+table.dataTable td, table.dataTable th {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+table.dataTable thead td {
+  overflow: visible;
+}
+
+/* ── ColVis / Buttons ── */
+.dt-buttons .dt-button {
+  background: #2372B9 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 5px 14px !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
+  transition: background 0.15s !important;
+}
+.dt-buttons .dt-button:hover { background: #1a5899 !important; }
+
+/* ── Containers (vtype + viewer) ── */
+.vtype-container, .viewer-container {
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+.vtype-container  { margin-bottom: 14px; overflow-x: auto; }
+.viewer-container { overflow: hidden; }
+#shared-panels    { overflow: hidden; border: 1px solid #dee2e6; border-top: none; border-radius: 0 0 6px 6px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
+
+/* ── Tab bar ── */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid #49A942;
+  background: #f4f4f4;
+  border-radius: 6px 6px 0 0;
+  padding: 8px 8px 0;
+  margin-bottom: 0;
+}
+.tab-btn {
+  padding: 8px 24px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  position: relative;
+  bottom: -2px;
+  transition: color 0.15s, background 0.15s;
+}
+.tab-btn:hover:not(.active) { background: #e4e4e4; color: #333; }
+#vtype-container .tab-btn:not(.active) { background: #f4f4f4; }
+#vtype-container .tab-btn:hover:not(.active) { background: #e4e4e4; color: #333; }
+#vtype-container .tab-btn.active { border-color: #2372B9; }
+.tab-btn-wrap .tab-btn:hover:not(.active) { background: transparent; color: #555; }
+.tab-btn-wrap:not(:has(.tab-btn.active)):hover .tab-btn,
+.tab-btn-wrap:not(:has(.tab-btn.active)):hover .dl-icon-btn { background: #e4e4e4; color: #333; }
+.tab-btn.active {
+  background: white;
+  border: 2px solid #49A942;
+  border-bottom: none;
+  padding: 7px 23px 8px;
+  color: #2372B9;
+  font-weight: 600;
+}
+.tab-btn-wrap {
+  display: inline-flex;
+  align-items: stretch;
+  position: relative;
+  bottom: -2px;
+}
+.tab-btn-wrap .tab-btn {
+  bottom: 0;
+  border-radius: 4px 0 0 0;
+  border-right: none;
+  padding-right: 10px;
+}
+.dl-icon-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: none;
+  border-bottom: none;
+  border-radius: 0 4px 0 0;
+  cursor: pointer;
+  padding: 0 7px;
+  color: #888;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+}
+.tab-btn.active ~ .dl-icon-btn,
+.tab-btn-wrap:has(.tab-btn.active) .dl-icon-btn {
+  background: white;
+  border: 2px solid #49A942;
+  border-left: none;
+  border-bottom: none;
+  color: #555;
+}
+.tab-btn-wrap:has(.tab-btn.active) .dl-icon-btn:hover { background: #d4edda !important; color: #2a7a25 !important; }
+.tab-panel        { display: none; }
+.tab-panel.active { display: block; }
+
+.container      { width: 100% !important; max-width: 100% !important; }
+.main-container { width: 95% !important; max-width: 95% !important; }
+
+.tab-panel iframe { width: 100%; height: 800px; border: none; display: block; }
+#viewer-somalier .tab-panel iframe { height: 600px; }
+.btn-bar { padding: 10px 12px 0; }
+
+.citation {
+  font-size: 11px;
+  color: #888;
+  margin: 4px 12px 6px;
+}
+.citation a { color: #888; }
+.citation a:hover { color: #555; }
+
+/* ── Gene Info panel ── */
+.gene-info-panel { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+.info-section {
+  border: 1px solid #c8e6c8;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.info-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  padding: 8px 14px;
+  background: #edf7ed;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-left: 3px solid #49A942;
+}
+.info-section-title::before {
+  content: '▾';
+  font-size: 15px;
+  transition: transform 0.15s;
+  display: inline-block;
+  color: #49A942;
+}
+.info-section[open] > .info-section-title::before { transform: rotate(0deg); }
+.info-section:not([open]) > .info-section-title::before { transform: rotate(-90deg); }
+.info-section-title--static::before { content: none; }
+
+.hgnc-data { padding: 12px 14px; }
+.info-placeholder { color: #aaa; font-size: 13px; padding: 8px 14px; display: block; }
+.section-summary { font-size: 12px; font-weight: 400; color: #777; }
+
+.hgnc-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e4f1e4;
+}
+.hgnc-symbol {
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  background: #49A942;
+  padding: 2px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+.hgnc-name   { font-size: 14px; color: #444; }
+.hgnc-meta   { font-size: 12px; color: #777; margin-bottom: 10px; }
+
+.hgnc-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  column-gap: 20px;
+  row-gap: 5px;
+  font-size: 13px;
+  align-items: baseline;
+}
+.hg-l { font-weight: 600; color: #333; white-space: nowrap; }
+.hg-v { color: #222; }
+
+/* ── PanelApp ── */
+.panelapp-data { padding: 10px 14px 6px; }
+
+details.pa-entry {
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.pa-header {
+  background: #f6f6f6;
+  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.pa-header::-webkit-details-marker { display: none; }
+.pa-header::before { content: '▾'; color: #aaa; font-size: 14px; transition: transform 0.15s; display: inline-block; flex-shrink: 0; }
+details.pa-entry[open] > .pa-header { border-bottom: 1px solid #e8e8e8; }
+details.pa-entry:not([open]) > .pa-header::before { transform: rotate(-90deg); }
+
+.pa-badge, .pa-moi-short {
+  display: inline-block;
+  box-sizing: border-box;
+  text-align: center;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pa-moi-short { color: #444; background: #e4e4e4; }
+
+.pa-panel-name { font-size: 13px; font-weight: 600; text-decoration: none; }
+.pa-panel-name:hover { text-decoration: underline; }
+
+.pa-details {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.pa-row { display: flex; gap: 10px; align-items: baseline; }
+.pa-label { font-weight: 600; color: #555; min-width: 100px; flex-shrink: 0; }
+.pa-val   { color: #222; }
+.pa-publist { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+
+.hgnc-meta a, .hg-v a, .pa-val a, .pa-panel-name { color: #2372B9; }
+
+
+
+/* ── Slides download dropdown ── */
+.dl-dropdown-menu {
+  display: none;
+  position: fixed;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+  z-index: 1000;
+  min-width: 190px;
+}
+.dl-dropdown-menu.open { display: block; }
+.dl-item {
+  display: block;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #333;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.dl-item:hover { background: #f5f5f5; color: #111; }
+</style>
+
+<script>
+var _pending = {};
+var _pdfTimeout       = null;
+var _shortState       = null;
+var _strucState       = null;
+var _cache      = new Map();
+var _cacheLimit = 200;
+var _inflight   = new Map();
+var _activeTabs = { 'vtype-container': 'vtab-short', 'viewer-short': 'slides', 'viewer-struc': 'slides', 'viewer-somalier': 'somalier-samples' };
+var _somalierLoaded = { tables: false, relatedness: false, ancestry: false };
+
+function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+var _extLink = '<svg width="11" height="11" style="vertical-align:-1px"><use href="#ico-ext"/></svg>';
+function pill(text, color, cls) { return '<span' + (cls ? ' class="' + cls + '"' : '') + ' style="display:inline-block;padding:1px 7px;border-radius:3px;font-size:11px;font-weight:600;color:#fff;background:' + (color || '#757575') + '">' + text + '</span>'; }
+function afPillColor(af) {
+  if (!af || af <= 0) return 'hsl(0,70%,38%)';
+  var t = Math.max(0, Math.min(1, (Math.log10(af) + 7) / 5)); // 0=red at ≤1e-7, 1=green at ≥1e-2
+  return 'hsl(' + Math.round(t * 120) + ',70%,38%)';
+}
+function extractPmid(p) { var m = String(p).match(/\d+/); return m ? m[0] : null; }
+
+async function cachedFetch(url, options, tag, transform) {
+  var key = url + (options && options.body ? '\0' + options.body : '');
+  if (_cache.has(key))    return _cache.get(key);
+  if (_inflight.has(key)) return _inflight.get(key);
+  var promise = (async function() {
+    try {
+      var r      = await fetch(url, options || undefined);
+      console.log('[' + tag + '] ' + ((options && options.method) || 'GET'), url, r.status);
+      var json   = await r.json();
+      var result = transform ? transform(json) : json;
+      if (_cache.size >= _cacheLimit) _cache.delete(_cache.keys().next().value);
+      _cache.set(key, result);
+      return result;
+    } catch(e) {
+      console.error('[' + tag + '] error:', e);
+      return null;
+    } finally {
+      _inflight.delete(key);
+    }
+  })();
+  _inflight.set(key, promise);
+  return promise;
+}
+
+function setOrLoad(activeTab, tabName, key, value, fn) {
+  if (activeTab === tabName) { fn(value); _pending[key] = null; }
+  else { _pending[key] = value; }
+}
+
+function loadUcsc(iframeId, linkId, p) {
+  var el = document.getElementById(iframeId);
+  document.getElementById(linkId).href = p.url;
+  el.src = ucscWithPix(p.renderUrl, el);
+}
+
+function loadSpliceAI(url) {
+  var el = document.getElementById('viewer-spliceai');
+  el.src = ''; el.src = url;
+}
+
+// Both panels start visible so DataTables can measure column widths during init.
+// After DT's $(document).ready() has run, hide the struc panel.
+$(document).ready(function() {
+  document.querySelectorAll('details.info-section').forEach(function(el) {
+    el.addEventListener('toggle', function() {
+      if (this.open) window.dispatchEvent(new Event('resize'));
+    });
+  });
+  document.getElementById('tab-vtab-struc').classList.remove('active');
+  if (!_hasSomalier) document.querySelector('[data-tab="vtab-relatedness"]').style.display = 'none';
+  if (!_hasAncestry)  document.querySelector('[data-tab="vtab-ancestry"]').style.display = 'none';
+  document.getElementById('meta-report-time').innerHTML = pill(_reportTime, '#49A942');
+  var pre = document.getElementById('meta-params-content');
+  try {
+    pre.textContent = JSON.stringify(JSON.parse(_paramsJson), null, 2);
+  } catch(e) {
+    pre.textContent = _paramsJson;
+  }
+  document.getElementById('meta-params-dl').addEventListener('click', function() {
+    var blob = new Blob([_paramsJson], {type: 'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'params.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  document.body.style.opacity = '1';
+});
+
+var _sharedTabs = { 'slides': true, 'gene-info': true, 'panelapp': true, 'hpo': true };
+
+function switchTab(container, tab) {
+  container.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  container.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  Object.keys(_sharedTabs).forEach(function(t) {
+    var el = document.getElementById('tab-' + t);
+    if (el) el.classList.remove('active');
+  });
+  container.querySelector('[data-tab="' + tab + '"]').classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('shared-panels').style.display = tab in _sharedTabs ? '' : 'none';
+}
+
+function setViewers(showShort, showStruc, showSomalier) {
+  document.getElementById('viewer-short').style.display    = showShort    ? '' : 'none';
+  document.getElementById('viewer-struc').style.display    = showStruc    ? '' : 'none';
+  document.getElementById('viewer-somalier').style.display = showSomalier ? '' : 'none';
+}
+
+// All tab switching
+document.addEventListener('click', function(e) {
+  if (!e.target.matches('.tab-btn')) return;
+  var tab       = e.target.getAttribute('data-tab');
+  var container = e.target.closest('.viewer-container, .vtype-container');
+  _activeTabs[container.id] = tab;
+  switchTab(container, tab);
+
+  // Vtype tab: show the matching viewer, hide the other; sync shared panels
+  if (tab === 'vtab-short' || tab === 'vtab-struc') {
+    var isShort = tab === 'vtab-short';
+    setViewers(isShort, !isShort, false);
+    var viewerId = isShort ? 'viewer-short' : 'viewer-struc';
+    document.getElementById('shared-panels').style.display =
+      _activeTabs[viewerId] in _sharedTabs ? '' : 'none';
+    reloadSharedTabs(isShort ? _shortState : _strucState);
+    return;
+  }
+  if (tab === 'vtab-metadata') {
+    setViewers(false, false, false);
+    document.getElementById('shared-panels').style.display = 'none';
+    return;
+  }
+  if (tab === 'vtab-relatedness' || tab === 'vtab-ancestry') {
+    setViewers(false, false, true);
+    document.getElementById('shared-panels').style.display = 'none';
+    if (!_somalierLoaded.tables) {
+      document.getElementById('viewer-somalier-samples').src      = 'qc/somalier-samples-tbl.html';
+      document.getElementById('viewer-somalier-pairs').src        = 'qc/somalier-pairs-tbl.html';
+      document.getElementById('viewer-somalier-ancestry-tbl').src = 'qc/somalier-ancestry-tbl.html';
+      _somalierLoaded.tables = true;
+    }
+    if (tab === 'vtab-relatedness') {
+      if (!_somalierLoaded.relatedness) {
+        document.getElementById('iframe-somalier').src = 'qc/somalier.html';
+        _somalierLoaded.relatedness = true;
+      }
+      switchTab(document.getElementById('viewer-somalier'), 'somalier-pairs');
+    }
+    if (tab === 'vtab-ancestry') {
+      if (!_somalierLoaded.ancestry) {
+        document.getElementById('iframe-somalier-ancestry').src = 'qc/somalier-ancestry.html';
+        _somalierLoaded.ancestry = true;
+      }
+      switchTab(document.getElementById('viewer-somalier'), 'somalier-ancestry-tbl');
+    }
+    return;
+  }
+
+  // Viewer tab lazy loads
+  var p = _pending;
+  if (tab === 'spliceai-lookup' && p.spliceAI)  { loadSpliceAI(p.spliceAI); p.spliceAI = null; }
+  if (tab === 'igv'             && p.igv)        { loadIgvIframe(p.igv);     p.igv = null; }
+  if (tab === 'svpv'            && p.svpv)       { document.getElementById('viewer-svpv').src = p.svpv; p.svpv = null; }
+  if (tab === 'ucsc-short'      && p.ucscShort)  { loadUcsc('viewer-ucsc-short', 'ucsc-link-short', p.ucscShort); p.ucscShort = null; }
+  if (tab === 'ucsc'            && p.ucsc)       { loadUcsc('viewer-ucsc',       'ucsc-link',        p.ucsc);      p.ucsc = null; }
+  if (tab === 'gene-info'       && p.geneInfo)   { loadGeneInfo(p.geneInfo); p.geneInfo = null; }
+  if (tab === 'panelapp'        && p.panelApp)   { loadPanelApp(p.panelApp.symbol, p.panelApp.geneId); p.panelApp = null; }
+  if (tab === 'hpo'             && p.hpo)        { loadHpo(p.hpo); p.hpo = null; }
+  if (tab === 'databases') {
+    if (p.clinvar) { loadClinvar(p.clinvar); p.clinvar = null; }
+    if (p.gnomad)  { loadGnomad(p.gnomad);   p.gnomad  = null; }
+    if (p.aou)     { loadAou(p.aou);         p.aou     = null; }
+  }
+});
+
+function ucscWithPix(url, iframeEl) {
+  var w = iframeEl.clientWidth || iframeEl.offsetWidth || 800;
+  return url + '&pix=' + w;
+}
+
+var _phHtml = '<span class="info-placeholder">Select a variant to load gene information.</span>';
+
+function clearSharedTabs() {
+  ['hgnc-data', 'gene-summary', 'panelapp-aus', 'panelapp-gel', 'hpo-diseases', 'hpo-phenotypes', 'clinvar-content', 'gnomad-content', 'aou-content']
+    .forEach(function(id) { document.getElementById(id).innerHTML = _phHtml; });
+  ['clinvar-summary', 'gnomad-summary', 'aou-summary']
+    .forEach(function(id) { document.getElementById(id).textContent = ''; });
+  clearTimeout(_pdfTimeout);
+  document.getElementById('viewer-pdf').src = '';
+  _pending.geneInfo = _pending.panelApp = _pending.hpo = _pending.clinvar = _pending.gnomad = _pending.aou = null;
+}
+
+function reloadSharedTabs(state) {
+  if (!state) { clearSharedTabs(); return; }
+  clearTimeout(_pdfTimeout);
+  _pdfTimeout = setTimeout(function() { document.getElementById('viewer-pdf').src = state.pdfUrl; }, 50);
+  _pending.geneInfo = state.ensemblGeneId;
+  _pending.panelApp = { symbol: state.symbol, geneId: state.ensemblGeneId };
+  _pending.hpo      = state.ensemblGeneId;
+  _pending.clinvar  = state.clinvarInfo || null;
+  _pending.gnomad   = state.aouId      || null;
+  _pending.aou      = state.aouId      || null;
+  // If a non-slides shared tab is visible, reload it immediately (hits cache)
+  var sp = document.getElementById('shared-panels');
+  if (sp.style.display !== 'none') {
+    var active = sp.querySelector('.tab-panel.active');
+    if (active) {
+      var tabId = active.id.replace('tab-', '');
+      if (tabId === 'gene-info') { loadGeneInfo(state.ensemblGeneId);                          _pending.geneInfo = null; }
+      if (tabId === 'panelapp')  { loadPanelApp(state.symbol, state.ensemblGeneId);             _pending.panelApp = null; }
+      if (tabId === 'hpo')       { loadHpo(state.ensemblGeneId);                               _pending.hpo      = null; }
+    }
+  }
+}
+
+async function fetchHgnc(ensemblGeneId) {
+  return cachedFetch(
+    'https://rest.genenames.org/fetch/ensembl_gene_id/' + encodeURIComponent(ensemblGeneId),
+    { headers: { 'Accept': 'application/json' } }, 'HGNC',
+    function(json) { return (json.response && json.response.docs && json.response.docs[0]) || null; }
+  );
+}
+
+function renderHgnc(doc) {
+  if (!doc) return '<span class="info-placeholder">No HGNC record found.</span>';
+  function lnk(href, text) { return '<a href="' + esc(href) + '" target="_blank">' + esc(text) + '</a>'; }
+  function arr(v) { return Array.isArray(v) ? v : (v ? [v] : []); }
+  function maneLnk(id) {
+    return id.startsWith('ENST')
+      ? lnk('https://www.ensembl.org/Homo_sapiens/Transcript/Summary?db=core;t=' + id.split('.')[0], id)
+      : lnk('https://www.ncbi.nlm.nih.gov/nuccore/' + id, id);
+  }
+
+  var hgncUrl = 'https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/' + doc.hgnc_id;
+  var html =
+    '<div class="hgnc-header">' +
+      '<span class="hgnc-symbol">' + esc(doc.symbol) + '</span>' +
+      '<span class="hgnc-name">'   + esc(doc.name)   + '</span>' +
+    '</div>' +
+    '<div class="hgnc-meta">' +
+      lnk(hgncUrl, doc.hgnc_id) +
+      (doc.location ? ' &nbsp;·&nbsp; ' + esc(doc.location) : '') +
+      ' &nbsp;·&nbsp; ' + esc(doc.status) +
+    '</div>' +
+    '<div class="hgnc-grid">';
+
+  function cell(label, val) {
+    return '<span class="hg-l">' + label + '</span><span class="hg-v">' + (val || '') + '</span>';
+  }
+
+  // Interleaved so 4-column grid renders as: col1-label | col1-value | col2-label | col2-value
+  html += cell('Ensembl', lnk('https://www.ensembl.org/id/' + esc(doc.ensembl_gene_id), esc(doc.ensembl_gene_id)));
+  html += cell('Locus type',      esc(doc.locus_type));
+  html += cell('Entrez',  doc.entrez_id ? lnk('https://www.ncbi.nlm.nih.gov/gene/' + doc.entrez_id, doc.entrez_id) : '');
+  html += cell('Previous symbol', arr(doc.prev_symbol).map(esc).join(', '));
+  html += cell('OMIM',    arr(doc.omim_id).map(function(id)     { return lnk('https://www.omim.org/entry/' + id, id); }).join(', '));
+  html += cell('Alias symbols',   arr(doc.alias_symbol).map(esc).join(', '));
+  html += cell('UniProt', arr(doc.uniprot_ids).map(function(id) { return lnk('https://www.uniprot.org/uniprot/' + id, id); }).join(', '));
+  html += cell('MANE select', arr(doc.mane_select).map(maneLnk).join(', '));
+  html += '</div>';
+  return html;
+}
+
+async function fetchGeneSummary(ensemblGeneId) {
+  var doc = await fetchHgnc(ensemblGeneId);
+  var entrezId = doc && doc.entrez_id;
+  if (!entrezId) return null;
+  var url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=gene&id=' + encodeURIComponent(entrezId) + '&retmode=json';
+  var json = await cachedFetch(url, null, 'NCBI:gene', null);
+  return json && json.result && json.result[String(entrezId)] && json.result[String(entrezId)].summary || null;
+}
+
+async function loadGeneInfo(ensemblGeneId) {
+  var hgncEl = document.getElementById('hgnc-data');
+  var sumEl  = document.getElementById('gene-summary');
+  if (hgncEl) {
+    hgncEl.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
+    hgncEl.innerHTML = renderHgnc(await fetchHgnc(ensemblGeneId));
+  }
+  if (sumEl) {
+    sumEl.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
+    var text = await fetchGeneSummary(ensemblGeneId);
+    sumEl.innerHTML = text
+      ? '<p style="font-size:13px;line-height:1.6;margin:0;color:#222">' + esc(text) + '</p>'
+      : '<span class="info-placeholder">No summary available.</span>';
+  }
+}
+
+function _pubmedUrl(pmid) {
+  return 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=' + pmid + '&retmode=json';
+}
+
+async function fetchPubmedSummaries(pmids) {
+  var unique = pmids.filter(function(p, i, a) { return a.indexOf(p) === i; });
+  var needed = unique.filter(function(p) {
+    var k = _pubmedUrl(p); return !_cache.has(k) && !_inflight.has(k);
+  });
+  if (needed.length) {
+    var url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=' + needed.join(',') + '&retmode=json';
+    var promise = fetch(url)
+      .then(function(r) { console.log('[NCBI:pubmed] GET', url, r.status); return r.json(); })
+      .then(function(json) {
+        needed.forEach(function(pmid) {
+          var key = _pubmedUrl(pmid);
+          var doc = (json && json.result && json.result[String(pmid)]) || null;
+          if (_cache.size >= _cacheLimit) _cache.delete(_cache.keys().next().value);
+          _cache.set(key, doc);
+          _inflight.delete(key);
+        });
+      })
+      .catch(function(e) {
+        console.error('[NCBI:pubmed] error:', e);
+        needed.forEach(function(p) { _inflight.delete(_pubmedUrl(p)); });
+      });
+    needed.forEach(function(p) { _inflight.set(_pubmedUrl(p), promise); });
+  }
+  await Promise.all(unique.map(function(p) { return _inflight.get(_pubmedUrl(p)) || Promise.resolve(); }));
+}
+
+function formatPubmedRef(pmid) {
+  var url  = 'https://pubmed.ncbi.nlm.nih.gov/' + pmid + '/';
+  var doc  = _cache.get(_pubmedUrl(pmid));
+  if (!doc) return '<a href="' + url + '" target="_blank">PMID:' + pmid + '</a>';
+  var title   = esc((doc.title || '').replace(/\.$/, ''));
+  var authors = doc.authors || [];
+  var auth    = authors.length ? esc(authors[0].name) + (authors.length > 1 ? ' et al.' : '') : '';
+  var journal = esc(doc.source || '');
+  var year    = esc((doc.pubdate || '').split(' ')[0]);
+  return '<a href="' + url + '" target="_blank">\u201c' + title + '\u201d</a>' +
+    (auth    ? ', ' + auth    : '') +
+    (journal ? ', <em>' + journal + '</em>' : '') +
+    (year    ? ' (' + year + ')' : '');
+}
+
+async function queryPanelApp(symbol, baseUrl) {
+  return cachedFetch(
+    baseUrl + '/api/v1/genes/?entity_name=' + encodeURIComponent(symbol),
+    null, 'PanelApp',
+    function(json) { return json.results || []; }
+  );
+}
+
+function renderPanelApp(results, baseUrl) {
+  if (!results || results.length === 0)
+    return '<span class="info-placeholder">No entries found.</span>';
+
+  function linkPhenotype(s) {
+    var e = esc(s);
+    e = e.replace(/(?:OMIM\s*#|MIM#)\s*(\d+)/gi, function(m, id) {
+      return '<a href="https://www.omim.org/entry/' + id + '" target="_blank">' + m + '</a>';
+    });
+    e = e.replace(/MONDO:(\d+)/g, function(m, id) {
+      return '<a href="https://monarchinitiative.org/disease/MONDO:' + id + '" target="_blank">' + m + '</a>';
+    });
+    return e;
+  }
+
+  var confMap = { '3': ['GREEN','#49A942'], '2': ['AMBER','#e8960a'], '1': ['RED','#d9363e'] };
+
+  results = results.slice().sort(function(a, b) {
+    var cl = parseInt(b.confidence_level) - parseInt(a.confidence_level);
+    if (cl !== 0) return cl;
+    return (a.panel.name || '').localeCompare(b.panel.name || '');
+  });
+
+  return results.map(function(r) {
+    var conf     = confMap[r.confidence_level] || ['?', '#888'];
+    var panelUrl = baseUrl + '/panels/' + r.panel.id + '/gene/' + encodeURIComponent(r.entity_name) + '/';
+    var moiShort = ((r.mode_of_inheritance || '').split(/[\s,]/)[0].toUpperCase()) || 'UNKNOWN';
+    var phenoHtml = (r.phenotypes || []).map(linkPhenotype).join('<br>') ||
+                    '<span style="color:#aaa">—</span>';
+    var pubs = (r.publications || []).map(extractPmid).filter(Boolean).map(formatPubmedRef);
+    var pubHtml = pubs.length
+      ? '<ul class="pa-publist">' + pubs.map(function(ref) { return '<li>' + ref + '</li>'; }).join('') + '</ul>'
+      : '<span style="color:#aaa">—</span>';
+    var moi = esc(r.mode_of_inheritance) || '<span style="color:#aaa">—</span>';
+
+    return '<details class="pa-entry">' +
+      '<summary class="pa-header">' +
+        pill(conf[0], conf[1], 'pa-badge') +
+        (moiShort ? '<span class="pa-moi-short">' + esc(moiShort) + '</span>' : '') +
+        '<a href="' + esc(panelUrl) + '" target="_blank" class="pa-panel-name" onclick="event.stopPropagation()">' + esc(r.panel.name) + '</a>' +
+      '</summary>' +
+      '<div class="pa-details">' +
+        '<div class="pa-row"><span class="pa-label">MOI</span><span class="pa-val">' + moi + '</span></div>' +
+        '<div class="pa-row"><span class="pa-label">Phenotypes</span><span class="pa-val">' + phenoHtml + '</span></div>' +
+        '<div class="pa-row"><span class="pa-label">Publications</span><span class="pa-val">' + pubHtml + '</span></div>' +
+      '</div>' +
+    '</details>';
+  }).join('');
+}
+
+async function loadPanelAppSource(symbol, ensemblGeneId, elId, baseUrl) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
+
+  var results = await queryPanelApp(symbol, baseUrl);
+
+  if (results !== null && results.length === 0) {
+    var hgncDoc = await fetchHgnc(ensemblGeneId);
+    if (hgncDoc) {
+      if (hgncDoc.symbol && hgncDoc.symbol !== symbol) {
+        results = await queryPanelApp(hgncDoc.symbol, baseUrl) || results;
+      }
+      if (results.length === 0) {
+        var prev = Array.isArray(hgncDoc.prev_symbol) ? hgncDoc.prev_symbol
+                 : (hgncDoc.prev_symbol ? [hgncDoc.prev_symbol] : []);
+        for (var i = 0; i < prev.length && results.length === 0; i++) {
+          results = await queryPanelApp(prev[i], baseUrl) || results;
+        }
+      }
+    }
+  }
+
+  var allPmids = (results || []).flatMap(function(r) {
+    return (r.publications || []).map(extractPmid).filter(Boolean);
+  });
+  if (allPmids.length) await fetchPubmedSummaries(allPmids);
+
+  el.innerHTML = renderPanelApp(results || [], baseUrl);
+  equalizePills(el, '.pa-badge');
+  equalizePills(el, '.pa-moi-short');
+}
+
+function equalizePills(container, selector) {
+  var pills = Array.prototype.slice.call(container.querySelectorAll(selector));
+  if (!pills.length) return;
+  pills.forEach(function(p) { p.style.width = ''; });
+  var maxW = pills.reduce(function(m, p) { return Math.max(m, p.offsetWidth); }, 0);
+  if (maxW > 0) pills.forEach(function(p) { p.style.width = maxW + 'px'; });
+}
+
+function loadPanelApp(symbol, ensemblGeneId) {
+  loadPanelAppSource(symbol, ensemblGeneId, 'panelapp-aus', 'https://panelapp-aus.org');
+  loadPanelAppSource(symbol, ensemblGeneId, 'panelapp-gel', 'https://panelapp.genomicsengland.co.uk');
+}
+
+function loadIgvIframe(url) {
+  var igvIframe = document.getElementById('viewer-igv');
+  var hashIdx = url.indexOf('#');
+  var base = hashIdx >= 0 ? url.substring(0, hashIdx) : url;
+  var hash = hashIdx >= 0 ? url.substring(hashIdx) : '';
+  igvIframe.src = base + '?_t=' + Date.now() + hash;
+}
+
+async function fetchHpo(ensemblGeneId) {
+  var doc = await fetchHgnc(ensemblGeneId);
+  var entrezId = doc && doc.entrez_id;
+  if (!entrezId) return null;
+  return cachedFetch(
+    'https://ontology.jax.org/api/network/annotation/NCBIGene:' + encodeURIComponent(entrezId),
+    null, 'HPO', null
+  );
+}
+
+function hpoItemLink(item) {
+  var id   = item.id || '';
+  var name = esc(item.name || id);
+  var url;
+  if      (id.startsWith('OMIM:'))  url = 'https://www.omim.org/entry/'                        + id.replace('OMIM:', '');
+  else if (id.startsWith('ORPHA:')) url = 'https://www.orpha.net/en/disease/detail/'            + id.replace('ORPHA:', '');
+  else if (id.startsWith('MONDO:')) url = 'https://monarchinitiative.org/disease/'              + id;
+  else if (id.startsWith('HP:'))    url = 'https://hpo.jax.org/browse/term/'                   + id;
+  else url = null;
+  var idSpan = '<span style="color:#888;font-size:11px;margin-left:6px">' + esc(id) + '</span>';
+  return url
+    ? '<a href="' + esc(url) + '" target="_blank">' + name + '</a>' + idSpan
+    : name + idSpan;
+}
+
+function renderHpoSection(items) {
+  if (!items || !items.length) return '<span class="info-placeholder">None found.</span>';
+  var sorted = items.slice().sort(function(a, b) { return (a.name || '').localeCompare(b.name || ''); });
+  return '<ul style="margin:4px 0 4px 18px;padding:0;font-size:13px;display:flex;flex-direction:column;gap:4px">' +
+    sorted.map(function(item) { return '<li>' + hpoItemLink(item) + '</li>'; }).join('') +
+    '</ul>';
+}
+
+async function loadHpo(ensemblGeneId) {
+  var disEl = document.getElementById('hpo-diseases');
+  var phEl  = document.getElementById('hpo-phenotypes');
+  if (!disEl || !phEl) return;
+  disEl.innerHTML = phEl.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
+  var data = await fetchHpo(ensemblGeneId);
+  if (!data) {
+    disEl.innerHTML = phEl.innerHTML = '<span class="info-placeholder">No HPO data found.</span>';
+    return;
+  }
+  disEl.innerHTML = renderHpoSection(data.diseases);
+  phEl.innerHTML  = renderHpoSection(data.phenotypes);
+}
+
+async function fetchClinvar(info) {
+  if (typeof info === 'string') info = { clnvid: info };
+  var clnvid = String(info.clnvid == null ? '' : info.clnvid);
+  var noId   = !clnvid || clnvid === 'NA' || clnvid === 'null' || clnvid === 'undefined';
+
+  if (noId) {
+    var chrom = String(info.chrom || '').replace(/^chr/i, '');
+    var pos   = String(info.pos   || '');
+    var hgvsg = String(info.hgvsg || '').replace(/^[^:]+:/, '');
+    if (!chrom || !pos || !hgvsg || hgvsg === 'NA') return null;
+    var searchUrl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&term=' +
+      encodeURIComponent(pos + '[chrpos]') + '+AND+' +
+      encodeURIComponent(hgvsg) + '+AND+' +
+      encodeURIComponent(chrom + '[chr]') + '&retmode=json';
+    var sj  = await cachedFetch(searchUrl, null, 'ClinVar:search', null);
+    var ids = sj && sj.esearchresult && sj.esearchresult.idlist || [];
+    if (!ids.length) return null;
+    clnvid = ids.join(',');
+  }
+
+  var ids = clnvid.split(',').map(function(s) { return s.trim().replace(/^VCV0*/i, ''); }).filter(Boolean);
+  if (!ids.length) return null;
+  var url  = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=clinvar&id=' + ids.join(',') + '&retmode=json';
+  var json = await cachedFetch(url, null, 'ClinVar', null);
+  return json && json.result || null;
+}
+
+function sigBadgeColor(sig) {
+  var s = (sig || '').toLowerCase();
+  if (s.indexOf('conflicting') !== -1) return '#e65100';
+  if (s.indexOf('pathogenic')  !== -1) return '#c62828';
+  if (s.indexOf('benign')      !== -1) return '#2e7d32';
+  return '#757575';
+}
+
+function renderClinvarRecord(rec) {
+  if (!rec) return '';
+  var url    = 'https://www.ncbi.nlm.nih.gov/clinvar/variation/' + rec.uid + '/';
+  var gc     = rec.germline_classification || {};
+  var sig    = gc.description || '';
+  var traits = (gc.trait_set || []).map(function(t) { return esc(t.trait_name); }).filter(Boolean);
+  var molConseq = (rec.molecular_consequence_list || []).join(', ');
+  var html = '<div style="border:1px solid #dee2e6;border-radius:6px;padding:12px;margin-bottom:8px">';
+  html += '<div style="margin-bottom:8px"><a href="' + esc(url) + '" target="_blank" style="font-weight:600;font-size:14px">' + esc(rec.title || rec.accession) + '</a></div>';
+  if (sig) {
+    html += '<div style="margin-bottom:6px"><span style="display:inline-block;padding:2px 10px;border-radius:4px;font-size:12px;font-weight:600;color:#fff;background:' + sigBadgeColor(sig) + '">' + esc(sig) + '</span>';
+    if (gc.review_status) html += ' <span style="color:#666;font-size:12px">' + esc(gc.review_status) + '</span>';
+    html += '</div>';
+  }
+  if (traits.length) html += '<div style="font-size:13px;color:#333;margin-bottom:4px"><b>Conditions:</b> ' + traits.join('; ') + '</div>';
+  if (molConseq)     html += '<div style="font-size:12px;color:#555"><b>Consequence:</b> ' + esc(molConseq) + '</div>';
+  if (gc.last_evaluated && gc.last_evaluated.indexOf('1/01/01') === -1)
+    html += '<div style="font-size:12px;color:#888;margin-top:4px">Last evaluated: ' + esc(gc.last_evaluated) + '</div>';
+  html += '</div>';
+  return html;
+}
+
+async function loadClinvar(info) {
+  var el = document.getElementById('clinvar-content');
+  if (!el) return;
+  if (typeof info === 'string') info = { clnvid: info };
+  var clnvid     = String(info.clnvid == null ? '' : info.clnvid);
+  var hasClnvid  = clnvid && clnvid !== 'NA' && clnvid !== 'null' && clnvid !== 'undefined';
+  var hasFallback = !!(info.chrom && info.pos && info.hgvsg && info.hgvsg !== 'NA');
+  var cvSumEl = document.getElementById('clinvar-summary');
+  function cvSum(html) { if (cvSumEl) cvSumEl.innerHTML = html; }
+  if (!hasClnvid && !hasFallback) {
+    el.innerHTML = '<span class="info-placeholder">No ClinVar record for this variant.</span>';
+    cvSum('<em>no record</em>'); return;
+  }
+  el.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
+  var result = await fetchClinvar(info);
+  if (!result) { el.innerHTML = '<span class="info-placeholder">No ClinVar data found.</span>'; cvSum('<em>no record</em>'); return; }
+  var uids = result.uids || [];
+  if (!uids.length) { el.innerHTML = '<span class="info-placeholder">No ClinVar records found.</span>'; cvSum('<em>no record</em>'); return; }
+  el.innerHTML = uids.map(function(uid) { return renderClinvarRecord(result[uid]); }).join('');
+  var sig = result[uids[0]] && result[uids[0]].germline_classification && result[uids[0]].germline_classification.description;
+  cvSum(sig ? pill(esc(sig), sigBadgeColor(sig)) : '');
+}
+
+async function fetchAou(variantId) {
+  return cachedFetch(
+    'https://public.api.researchallofus.org/v1/genomics/variant-details/' + encodeURIComponent(variantId),
+    null, 'AllOfUs',
+    function(json) { return json.statusCode ? null : json; }
+  );
+}
+
+// ── Shared frequency table ────────────────────────────────────────────────
+// Normalised row: { label, ac, an, af, hom }  (af may be null for AoU)
+// opts: { rows, total, linkHtml, citation }
+
+function _fmtAf(af) {
+  if (af == null) return '\u2014';
+  if (af === 0)   return '0';
+  return af < 0.0001 ? af.toExponential(2) : af.toFixed(4);
+}
+function _nullStr(v) { return v != null ? String(v) : '\u2014'; }
+
+function renderFreqTable(opts) {
+  var html = '<div style="padding:8px 12px">';
+  html += '<table style="border-collapse:collapse;font-size:13px;width:100%"><thead><tr>';
+  ['Population', 'Allele Count', 'Allele Number', 'Allele Frequency', 'Homozygotes'].forEach(function(h) {
+    html += '<th style="text-align:left;padding:4px 8px;border-bottom:2px solid #49A942;white-space:nowrap">' + h + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+  opts.rows.forEach(function(r, i) {
+    var bg = i % 2 ? 'background:#f9f9f9;' : '';
+    html += '<tr style="' + bg + '">';
+    html += '<td style="padding:4px 8px">'  + esc(r.label)     + '</td>';
+    html += '<td style="padding:4px 8px">'  + _nullStr(r.ac)   + '</td>';
+    html += '<td style="padding:4px 8px">'  + _nullStr(r.an)   + '</td>';
+    html += '<td style="padding:4px 8px">'  + _fmtAf(r.af)     + '</td>';
+    html += '<td style="padding:4px 8px">'  + _nullStr(r.hom)  + '</td>';
+    html += '</tr>';
+  });
+  var t = opts.total;
+  html += '<tr style="font-weight:600;border-top:1px solid #dee2e6">';
+  html += '<td style="padding:4px 8px">Total</td>';
+  html += '<td style="padding:4px 8px">' + _nullStr(t.ac)  + '</td>';
+  html += '<td style="padding:4px 8px">' + _nullStr(t.an)  + '</td>';
+  html += '<td style="padding:4px 8px">' + _fmtAf(t.af)    + '</td>';
+  html += '<td style="padding:4px 8px">' + _nullStr(t.hom) + '</td>';
+  html += '</tr></tbody></table>';
+  if (opts.linkHtml) html += '<div style="margin-top:8px;font-size:13px">' + opts.linkHtml + '</div>';
+  if (opts.citation) html += opts.citation;
+  html += '</div>';
+  return html;
+}
+
+var _zeroPills = pill('AC: 0', afPillColor(0)) + ' ' + pill('AF: 0', afPillColor(0)) + ' ' + pill('HOM: 0', afPillColor(0));
+
+function _freqSumPills(total) {
+  var af = total.af != null ? total.af : (total.an ? total.ac / total.an : 0);
+  var c  = afPillColor(af);
+  return pill('AC: ' + _nullStr(total.ac), c) + ' ' + pill('AF: ' + _fmtAf(af), c) + ' ' + pill('HOM: ' + _nullStr(total.hom), c);
+}
+
+async function loadFreqPanel(cfg) {
+  var el = document.getElementById(cfg.elId);
+  if (!el) return;
+  var sumEl = document.getElementById(cfg.sumElId);
+  function setSum(t) { if (sumEl) sumEl.innerHTML = t; }
+  if (!cfg.variantId || cfg.variantId === 'NA') {
+    el.innerHTML = '<span class="info-placeholder">' + cfg.noDataMsg + '</span>';
+    setSum('<em>no record</em>'); return;
+  }
+  el.innerHTML = '<span class="info-placeholder">Loading\u2026</span>';
+  var raw = await cfg.fetch(cfg.variantId);
+  if (!raw) {
+    el.innerHTML = '<span class="info-placeholder">' + cfg.notFoundMsg + '</span>';
+    setSum(_zeroPills); return;
+  }
+  var data = cfg.transform(raw, cfg.variantId);
+  el.innerHTML = renderFreqTable(data);
+  setSum(_freqSumPills(data.total));
+}
+
+// ── gnomAD ────────────────────────────────────────────────────────────────
+
+async function fetchGnomad(variantId) {
+  var query = '{ variant(variantId: "' + variantId + '", dataset: gnomad_r4) { variant_id joint { ac an homozygote_count populations { id ac an homozygote_count } } } }';
+  return cachedFetch(
+    'https://gnomad.broadinstitute.org/api',
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: query }) },
+    'gnomAD',
+    function(json) { return (json.data && json.data.variant) || null; }
+  );
+}
+
+var _gnomadAncIds = ['remaining', 'afr', 'nfe', 'amr', 'sas', 'asj', 'eas', 'fin', 'mid', 'ami'];
+var _gnomadNames  = { remaining: 'Remaining', afr: 'African/African American', nfe: 'European (non-Finnish)',
+  amr: 'Admixed American', sas: 'South Asian', asj: 'Ashkenazi Jewish',
+  eas: 'East Asian', fin: 'European (Finnish)', mid: 'Middle Eastern', ami: 'Amish' };
+
+function _transformGnomad(variant, variantId) {
+  var joint  = variant.joint;
+  var popMap = {};
+  (joint.populations || []).forEach(function(p) { popMap[p.id] = p; });
+  var rows = _gnomadAncIds.filter(function(id) { return popMap[id]; }).map(function(id) {
+    var p = popMap[id];
+    return { label: _gnomadNames[id] || id, ac: p.ac, an: p.an, af: p.an ? p.ac / p.an : 0, hom: p.homozygote_count };
+  });
+  rows.sort(function(a, b) { return a.label.localeCompare(b.label); });
+  var gnomadUrl = 'https://gnomad.broadinstitute.org/variant/' + encodeURIComponent(variantId) + '?dataset=gnomad_r4';
+  return {
+    rows: rows,
+    total: { ac: joint.ac, an: joint.an, af: joint.an ? joint.ac / joint.an : 0, hom: joint.homozygote_count },
+    linkHtml: '<a href="' + esc(gnomadUrl) + '" target="_blank">' + esc(variantId) + ' on gnomAD ' + _extLink + '</a>',
+  };
+}
+
+function loadGnomad(variantId) {
+  return loadFreqPanel({ elId: 'gnomad-content', sumElId: 'gnomad-summary',
+    noDataMsg: 'No gnomAD data for this variant.', notFoundMsg: 'No gnomAD record found.',
+    variantId: variantId, fetch: fetchGnomad, transform: _transformGnomad });
+}
+
+// ── All of Us ─────────────────────────────────────────────────────────────
+
+var _aouPopKeys = [
+  { key: 'afr', label: 'African'        },
+  { key: 'eas', label: 'East Asian'     },
+  { key: 'eur', label: 'European'       },
+  { key: 'amr', label: 'Americas'       },
+  { key: 'mid', label: 'Middle Eastern' },
+  { key: 'sas', label: 'South Asian'    },
+  { key: 'oth', label: 'Remaining'      },
+];
+
+function _transformAou(data, variantId) {
+  var rows = _aouPopKeys.map(function(pop) {
+    return { label: pop.label,
+      ac:  data[pop.key + 'AlleleCount'],
+      an:  data[pop.key + 'AlleleNumber'],
+      af:  data[pop.key + 'AlleleFrequency'],
+      hom: data[pop.key + 'HomozygoteCount'] };
+  });
+  rows.sort(function(a, b) { return a.label.localeCompare(b.label); });
+  var browserUrl = 'https://databrowser.researchallofus.org/snvsindels/' + encodeURIComponent(variantId);
+  return {
+    rows: rows,
+    total: { ac: data.totalAlleleCount, an: data.totalAlleleNumber,
+             af: data.totalAlleleFrequency, hom: data.totalHomozygoteCount },
+    linkHtml: '<a href="' + esc(browserUrl) + '" target="_blank">' + esc(variantId) + ' on All of Us Data Browser ' + _extLink + '</a>'
+  };
+}
+
+function loadAou(variantId) {
+  return loadFreqPanel({ elId: 'aou-content', sumElId: 'aou-summary',
+    noDataMsg: 'No All of Us data for this variant.', notFoundMsg: 'No All of Us record found.',
+    variantId: variantId, fetch: fetchAou, transform: _transformAou });
+}
+
+function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl, ensemblGeneId, symbol, clnvid, chrom, pos, hgvsg, familyId, variantId) {
+  var clinvarInfo = { clnvid: clnvid || null, chrom: String(chrom || ''), pos: String(pos || ''), hgvsg: String(hgvsg || '') };
+  var aouId = variantId ? String(variantId).replace(/^chr/i, '') : null;
+  _shortState = { pdfUrl: pdfUrl, ensemblGeneId: ensemblGeneId, symbol: symbol, clinvarInfo: clinvarInfo, aouId: aouId };
+  ['clinvar-summary', 'gnomad-summary', 'aou-summary']
+    .forEach(function(id) { document.getElementById(id).textContent = ''; });
+  updateSlideDownloads(familyId);
+  clearTimeout(_pdfTimeout);
+  _pdfTimeout = setTimeout(function() { document.getElementById('viewer-pdf').src = pdfUrl; }, 50);
+
+  document.getElementById('spliceai-link').href = spliceaiUrl;
+  var activeTab = _activeTabs['viewer-short'];
+  var ucscVal   = { url: ucscUrl, renderUrl: ucscRenderUrl };
+  var paVal     = { symbol: symbol, geneId: ensemblGeneId };
+  setOrLoad(activeTab, 'igv',            'igv',       htmlUrl + '#row=' + rowId, loadIgvIframe);
+  setOrLoad(activeTab, 'spliceai-lookup','spliceAI',  spliceaiUrl, loadSpliceAI);
+  setOrLoad(activeTab, 'ucsc-short',     'ucscShort', ucscVal, function(v) { loadUcsc('viewer-ucsc-short', 'ucsc-link-short', v); });
+  setOrLoad(activeTab, 'databases',      'clinvar',   clinvarInfo, loadClinvar);
+  setOrLoad(activeTab, 'databases',      'gnomad',    aouId,       loadGnomad);
+  setOrLoad(activeTab, 'databases',      'aou',       aouId,       loadAou);
+  setOrLoad(activeTab, 'gene-info',      'geneInfo',  ensemblGeneId, loadGeneInfo);
+  setOrLoad(activeTab, 'panelapp',       'panelApp',  paVal, function(v) { loadPanelApp(v.symbol, v.geneId); });
+  setOrLoad(activeTab, 'hpo',            'hpo',       ensemblGeneId, loadHpo);
+  switchTab(document.getElementById('viewer-short'), activeTab);
+}
+
+function loadStrucSample(pdfUrl, samplotUrl, svpvUrl, ucscUrl, ucscRenderUrl, ensemblGeneId, symbol, familyId) {
+  _strucState = { pdfUrl: pdfUrl, ensemblGeneId: ensemblGeneId, symbol: symbol };
+  updateSlideDownloads(familyId);
+  clearTimeout(_pdfTimeout);
+  _pdfTimeout = setTimeout(function() { document.getElementById('viewer-pdf').src = pdfUrl; }, 50);
+
+  document.getElementById('viewer-samplot').src = samplotUrl;
+  var svpvIframe = document.getElementById('viewer-svpv');
+  svpvIframe.src = '';
+
+  var activeTab = _activeTabs['viewer-struc'];
+  var ucscVal   = { url: ucscUrl, renderUrl: ucscRenderUrl };
+  var paVal     = { symbol: symbol, geneId: ensemblGeneId };
+  setOrLoad(activeTab, 'svpv',      'svpv',     svpvUrl,       function(u) { svpvIframe.src = u; });
+  setOrLoad(activeTab, 'ucsc',      'ucsc',     ucscVal,       function(v) { loadUcsc('viewer-ucsc', 'ucsc-link', v); });
+  setOrLoad(activeTab, 'gene-info', 'geneInfo', ensemblGeneId, loadGeneInfo);
+  setOrLoad(activeTab, 'panelapp',  'panelApp', paVal,         function(v) { loadPanelApp(v.symbol, v.geneId); });
+  setOrLoad(activeTab, 'hpo',       'hpo',      ensemblGeneId, loadHpo);
+  switchTab(document.getElementById('viewer-struc'), activeTab);
+}
+
+function updateSlideDownloads(familyId) {
+  var base = 'by_family/' + familyId + '/' + familyId;
+  document.getElementById('slides-dl-pdf').href  = base + '.pdf';
+  document.getElementById('slides-dl-pptx').href = base + '.pptx';
+  document.getElementById('igv-dl-html').href    = base + '.igv_report.html';
+}
+
+function dlIconActivate(btn, e) {
+  var tabBtn = btn.parentElement.querySelector('.tab-btn');
+  if (tabBtn && !tabBtn.classList.contains('active')) {
+    e.preventDefault();
+    tabBtn.click();
+    return true;
+  }
+  return false;
+}
+
+function toggleDlDropdown(btn, e) {
+  if (dlIconActivate(btn, e)) return;
+  e.stopPropagation();
+  var menu = document.getElementById('slides-dl-menu');
+  var rect = btn.getBoundingClientRect();
+  menu.style.top  = (rect.bottom + 2) + 'px';
+  menu.style.left = rect.left + 'px';
+  menu.classList.toggle('open');
+}
+
+document.addEventListener('click', function() {
+  var m = document.getElementById('slides-dl-menu');
+  if (m) m.classList.remove('open');
+});
+
+</script>

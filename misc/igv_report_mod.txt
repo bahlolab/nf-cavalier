@@ -1,0 +1,35 @@
+<script>
+(function() {
+  
+  var hash = window.location.hash.replace('#row=', '');
+  var keepId = parseInt(hash, 10);
+  if (isNaN(keepId)) return;
+
+  var _tableJson;
+  Object.defineProperty(window, 'tableJson', {
+    get: function() { return _tableJson; },
+    set: function(val) {
+      var row = val.rows.find(function(r) { return r[0] === keepId; });
+      if (row) { row[0] = 0; val.rows = [row]; }
+      _tableJson = val;
+    },
+    configurable: true
+  });
+
+  var _sessionDictionary;
+  Object.defineProperty(window, 'sessionDictionary', {
+    get: function() { return _sessionDictionary; },
+    set: function(val) {
+      var entry = val[keepId];
+      _sessionDictionary = {};
+      if (entry !== undefined) _sessionDictionary[0] = entry;
+    },
+    configurable: true
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var tableContainer = document.getElementById('tableContainer');
+    if (tableContainer) tableContainer.style.display = 'none';
+  });
+})();
+</script>

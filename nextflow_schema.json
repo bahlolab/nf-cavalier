@@ -1,8 +1,8 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema",
-    "$id": "https://raw.githubusercontent.com/./master/nextflow_schema.json",
+    "$id": "https://raw.githubusercontent.com/bahlolab/nf-cavalier/master/nextflow_schema.json",
     "title": "nf-cavalier parameters",
-    "description": "",
+    "description": "Nextflow pipeline for singleton and family based candidate variant reporting based on gene lists.",
     "type": "object",
     "definitions": {
         "input_output_options": {
@@ -10,244 +10,520 @@
             "type": "object",
             "fa_icon": "fas fa-terminal",
             "description": "Define where the pipeline should find input data and save output data.",
-            "required": [
-                "id",
-                "snp_vcf",
-                "sv_vcf",
-                "alignments",
-                "ped",
-                "lists",
-                "outdir"
-            ],
             "properties": {
-                "id": {
+                "outdir": {
                     "type": "string",
-                    "default": "my-cohort",
-                    "description": "Name for cohort",
-                    "fa_icon": "fas fa-address-card"
-                },
-                "snp_vcf": {
-                    "type": "string",
-                    "default": "None",
-                    "fa_icon": "fas fa-database",
-                    "description": "Path to SNP VCF",
-                    "format": "file-path"
-                },
-                "sv_vcf": {
-                    "type": "string",
-                    "default": "None",
-                    "fa_icon": "fas fa-database",
-                    "description": "Path to SV VCF",
-                    "format": "file-path"
+                    "format": "directory-path",
+                    "description": "The output directory where the results will be saved.",
+                    "fa_icon": "fas fa-folder-open",
+                    "default": "output"
                 },
                 "alignments": {
                     "type": "string",
-                    "default": "None",
                     "fa_icon": "fas fa-align-left",
-                    "description": "Path to alignments TSV file (sample_id, alignment_path). Supports BAM and CRAM files, or a mix of both.",
-                    "format": "file-path"
-                },
-                "ped": {
-                    "type": "string",
-                    "default": "None",
-                    "fa_icon": "fas fa-users",
-                    "description": "Path to ped file",
+                    "description": "TSV file with alignment file paths (Col 1: sample ID, Col 2: BAM or CRAM path).",
                     "format": "file-path"
                 },
                 "lists": {
                     "type": "string",
-                    "default": "None",
                     "fa_icon": "fas fa-list-ul",
-                    "description": "Path to gene lists TSV file",
+                    "description": "Gene lists, comma separated (TSV or ID). Supports local TSV files, PanelApp (PAA:/PAE:), HPO (HP:), Genes4Epilepsy (G4E:), HGNC, or genomic regions.",
                     "format": "file-path"
                 },
-                "outdir": {
+                "ped": {
                     "type": "string",
-                    "format": "directory-path",
-                    "description": "The output directory where the results will be saved. You have to use absolute paths to storage on Cloud infrastructure.",
-                    "fa_icon": "fas fa-folder-open",
-                    "default": "output"
+                    "fa_icon": "fas fa-users",
+                    "description": "Pedigree file. Required for familial analysis; leave null for singletons.",
+                    "format": "file-path"
+                },
+                "short_vcf": {
+                    "type": "string",
+                    "fa_icon": "fas fa-database",
+                    "description": "Input VCF for short variants (SNVs/Indels).",
+                    "format": "file-path"
+                },
+                "struc_vcf": {
+                    "type": "string",
+                    "fa_icon": "fas fa-database",
+                    "description": "Input VCF for structural variants.",
+                    "format": "file-path"
+                },
+                "short_vcf_annotated": {
+                    "type": "string",
+                    "fa_icon": "fas fa-database",
+                    "description": "Pre-annotated short variant VCF (skips annotation step).",
+                    "format": "file-path"
+                },
+                "struc_vcf_annotated": {
+                    "type": "string",
+                    "fa_icon": "fas fa-database",
+                    "description": "Pre-annotated structural variant VCF (skips annotation step).",
+                    "format": "file-path"
                 }
             }
-        },
-        "filtering": {
-            "title": "Filtering",
-            "type": "object",
-            "description": "Define how variants should be filtered",
-            "default": "",
-            "properties": {
-                "maf_dom": {
-                    "type": "number",
-                    "default": 0.0001,
-                    "description": "Max gnomAD AF for dominantly inherited variant"
-                },
-                "maf_de_novo": {
-                    "type": "number",
-                    "default": 0.0001,
-                    "description": "Max gnomAD AF for de novo variant"
-                },
-                "maf_rec": {
-                    "type": "number",
-                    "default": 0.01,
-                    "description": "Max gnomAD AF for recessively inherited variant"
-                },
-                "maf_comp_het": {
-                    "type": "number",
-                    "default": 0.01,
-                    "description": "Max gnomAD AF for compound heterozygous inherited variant"
-                },
-                "max_cohort_af": {
-                    "type": "number",
-                    "default": 1,
-                    "description": "Max AF in cohort (excluding family of interest)"
-                },
-                "max_cohort_ac": {
-                    "type": "string",
-                    "default": "Inf",
-                    "description": "Max AC in cohort (excluding family of interest)"
-                },
-                "min_impact": {
-                    "type": "string",
-                    "default": "MODERATE",
-                    "description": "Minimum VEP impact, one of: 'MODIFIER', 'LOW', 'MODERATE', 'HIGH'"
-                },
-                "exclude_benign_missense": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Exclude missense variants universally predicted/classified as benign"
-                },
-                "include_sv_csv": {
-                    "type": "boolean",
-                    "description": "Retain all SVs that with classification 'coding sequence variant'",
-                    "default": true
-                },
-                "sv_types": {
-                    "type": "string",
-                    "default": "DEL,DUP,INS,INV,BND",
-                    "hidden": true,
-                    "description": "Comma separated list SV types to include"
-                }
-            },
-            "required": [
-                "max_af",
-                "maf_dom",
-                "maf_de_novo",
-                "maf_rec",
-                "maf_comp_het",
-                "max_cohort_af",
-                "max_cohort_ac"
-            ]
-        },
-        "reference_data": {
-            "title": "Reference Data",
-            "type": "object",
-            "description": "",
-            "default": "",
-            "properties": {
-                "ref_fasta": {
-                    "type": "string",
-                    "default": "None",
-                    "description": "Path to reference fasta file",
-                    "format": "file-path"
-                },
-                "ref_hg38": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Reference is hg38 (not hg19)"
-                },
-                "vep_cache": {
-                    "type": "string",
-                    "default": "None",
-                    "description": "Path to VEP cache",
-                    "format": "file-path"
-                },
-                "vep_cache_ver": {
-                    "type": "string",
-                    "default": "None",
-                    "description": "VEP cache version to use"
-                },
-                "vep_assembly": {
-                    "type": "string",
-                    "default": "GRCh38",
-                    "hidden": true,
-                    "description": "VEP assembly"
-                },
-                "pop_sv": {
-                    "type": "string",
-                    "default": "None",
-                    "description": "Path to Pop SV VCF file",
-                    "format": "file-path"
-                },
-                "ref_gene": {
-                    "type": "string",
-                    "default": "None",
-                    "description": "Path to UCSC refgene file",
-                    "format": "file-path"
-                }
-            },
-            "required": [
-                "ref_fasta",
-                "vep_cache",
-                "vep_cache_ver",
-                "pop_sv",
-                "ref_gene"
-            ]
         },
         "miscellaneous": {
             "title": "Miscellaneous",
             "type": "object",
-            "description": "Additional parameters",
-            "default": "",
+            "description": "Additional pipeline options.",
             "properties": {
-                "snp_caller": {
-                    "type": "string",
-                    "default": "GATK",
-                    "description": "SNP caller used"
-                },
-                "fill_tags": {
-                    "type": "string",
-                    "default": "false",
-                    "hidden": true,
-                    "description": "Use bcftools +fill-tags to calculate cohort AC and AF"
-                },
-                "remove_fields": {
-                    "type": "string",
-                    "default": "INFO/CSQ",
-                    "hidden": true,
-                    "description": "VCF fields to remove prior to annotation with VEP"
-                },
-                "chunk_size": {
-                    "type": "integer",
-                    "default": 200000,
-                    "hidden": true,
-                    "description": "For parallelization of VCF processing"
-                },
-                "sv_chunk_size": {
-                    "type": "string",
-                    "default": "10000",
-                    "hidden": true,
-                    "description": "For parallelization of VCF processing"
-                },
-                "no_slides": {
+                "annotate_only": {
                     "type": "boolean",
-                    "hidden": true,
-                    "description": "Don't output powerpoint slides, allowing for speedier pipeline run"
+                    "default": false,
+                    "description": "Only perform annotation; skip filtering and reporting."
+                },
+                "make_slides": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Output PPT/PDF slides."
+                },
+                "qc_somalier": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Run somalier QC."
+                },
+                "ref_fasta": {
+                    "type": "string",
+                    "description": "Path to GRCh38 reference FASTA file.",
+                    "format": "file-path"
+                },
+                "cavalier_cache_dir": {
+                    "type": "string",
+                    "default": "cavalier_cache",
+                    "description": "Directory for the cavalier R package cache."
+                },
+                "cavalier_options": {
+                    "type": "object",
+                    "description": "Additional options passed to the cavalier R package.",
+                    "hidden": true
+                },
+                "somalier_dir": {
+                    "type": "string",
+                    "description": "Path to existing somalier reference data.",
+                    "format": "directory-path"
+                }
+            }
+        },
+        "vep_options": {
+            "title": "VEP options",
+            "type": "object",
+            "description": "Variant Effect Predictor annotation settings and plugin files.",
+            "properties": {
+                "vep_cache": {
+                    "type": "string",
+                    "default": "annotation/vep_cache",
+                    "description": "Path to VEP cache directory.",
+                    "format": "directory-path"
+                },
+                "vep_cache_ver": {
+                    "type": "string",
+                    "default": "115",
+                    "description": "VEP cache version to use."
+                },
+                "vep_check": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Check that the number of variants output by VEP equals the number input."
+                },
+                "vep_spliceai_snv": {
+                    "type": "string",
+                    "default": "annotation/spliceAI/1.3/spliceai_scores.raw.snv.hg38.vcf.gz",
+                    "description": "SpliceAI SNV VCF path (available from Illumina). Set to null to disable.",
+                    "format": "file-path"
+                },
+                "vep_spliceai_indel": {
+                    "type": "string",
+                    "default": "annotation/spliceAI/1.3/spliceai_scores.raw.indel.hg38.vcf.gz",
+                    "description": "SpliceAI Indel VCF path (available from Illumina). Set to null to disable.",
+                    "format": "file-path"
+                },
+                "vep_alphamissense": {
+                    "type": "string",
+                    "default": "annotation/alphamissense/AlphaMissense_hg38.tsv.gz",
+                    "description": "AlphaMissense annotation TSV file. Set to null to disable.",
+                    "format": "file-path"
+                },
+                "vep_revel": {
+                    "type": "string",
+                    "default": "annotation/REVEL/revel_1.3.hg38.vep.tsv.gz",
+                    "description": "REVEL annotation TSV file. Set to null to disable.",
+                    "format": "file-path"
+                },
+                "vep_utr_annotator": {
+                    "type": "string",
+                    "default": "annotation/UTRannotator/uORF_5UTR_GRCh38_PUBLIC.txt",
+                    "description": "UTRannotator file. Set to null to disable.",
+                    "format": "file-path"
+                }
+            }
+        },
+        "vcfanno_options": {
+            "title": "vcfanno options",
+            "type": "object",
+            "description": "vcfanno annotation settings for short variant population databases.",
+            "properties": {
+                "vcfanno_binary": {
+                    "type": "string",
+                    "default": "https://github.com/brentp/vcfanno/releases/download/v0.3.7/vcfanno_linux64",
+                    "description": "Path or URL for vcfanno binary.",
+                    "hidden": true
+                },
+                "vcfanno_gnomad": {
+                    "type": "string",
+                    "description": "gnomAD 4.1 callset vcf.gz with INFO: AC, AF, fafmax_faf95_max, nhomalt.",
+                    "format": "file-path"
+                },
+                "vcfanno_cadd_snv": {
+                    "type": "string",
+                    "description": "CADD 1.7 SNV TSV file.",
+                    "format": "file-path"
+                },
+                "vcfanno_cadd_indel": {
+                    "type": "string",
+                    "description": "CADD 1.7 indel TSV file.",
+                    "format": "file-path"
+                },
+                "vcfanno_clinvar": {
+                    "type": "string",
+                    "description": "ClinVar VCF with INFO: CLNSIG, GENEINFO and ID.",
+                    "format": "file-path"
+                },
+                "vcfanno_custom": {
+                    "type": "string",
+                    "description": "Custom vcfanno TOML configuration file.",
+                    "format": "file-path"
+                }
+            }
+        },
+        "short_variant_options": {
+            "title": "Short variant options",
+            "type": "object",
+            "description": "Processing options for short variants (SNVs/Indels).",
+            "properties": {
+                "short_n_shards": {
+                    "type": "integer",
+                    "default": 200,
+                    "description": "Split input VCF into this many shards for parallel processing."
+                },
+                "max_short_per_deck": {
+                    "type": "integer",
+                    "default": 500,
+                    "description": "Maximum number of short variants per slide deck."
+                },
+                "short_vcf_filter": {
+                    "type": "string",
+                    "default": "PASS,.",
+                    "description": "Apply FILTER to input short variant VCF (comma-separated FILTER values to retain)."
+                },
+                "short_info": {
+                    "type": "array",
+                    "default": ["AC", "AF", "AN"],
+                    "description": "INFO fields to keep from the short variant VCF.",
+                    "hidden": true
+                },
+                "short_format": {
+                    "type": "array",
+                    "default": ["GT", "GQ", "DP"],
+                    "description": "FORMAT fields to keep from the short variant VCF.",
+                    "hidden": true
+                },
+                "short_fill_tags": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Fill AC, AF, and AN tags using bcftools +fill-tags. Recommended if VCF does not have these set."
+                },
+                "short_vcfanno_filter": {
+                    "type": "string",
+                    "default": "gnomad_AF<0.01 || gnomad_AF=\".\"",
+                    "description": "Filter expression applied after vcfanno annotation. Reduces VEP runtime by dropping common variants."
+                }
+            }
+        },
+        "filtering_short": {
+            "title": "Short variant filtering",
+            "type": "object",
+            "description": "Filtering thresholds for short variants.",
+            "properties": {
+                "FILTER_SHORT_MIN_DP": {
+                    "type": "integer",
+                    "default": 5,
+                    "description": "Minimum read depth for short variants."
+                },
+                "FILTER_SHORT_MIN_GQ": {
+                    "type": "integer",
+                    "default": 10,
+                    "description": "Minimum genotype quality for short variants."
+                },
+                "FILTER_SHORT_POP_DOM_MAX_AF": {
+                    "type": "number",
+                    "default": 0.0001,
+                    "description": "Maximum population (gnomAD) AF for dominant short variants."
+                },
+                "FILTER_SHORT_POP_REC_MAX_AF": {
+                    "type": "number",
+                    "default": 0.01,
+                    "description": "Maximum population (gnomAD) AF for recessive short variants."
+                },
+                "FILTER_SHORT_POP_DOM_MAX_AC": {
+                    "type": "integer",
+                    "default": 10,
+                    "description": "Maximum population (gnomAD) AC for dominant short variants."
+                },
+                "FILTER_SHORT_POP_REC_MAX_AC": {
+                    "type": "integer",
+                    "default": 1000,
+                    "description": "Maximum population (gnomAD) AC for recessive short variants."
+                },
+                "FILTER_SHORT_POP_DOM_MAX_HOM": {
+                    "type": "integer",
+                    "default": 1,
+                    "description": "Maximum population (gnomAD) homozygote count for dominant short variants."
+                },
+                "FILTER_SHORT_POP_REC_MAX_HOM": {
+                    "type": "integer",
+                    "default": 10,
+                    "description": "Maximum population (gnomAD) homozygote count for recessive short variants."
+                },
+                "FILTER_SHORT_COH_DOM_MAX_AF": {
+                    "type": "number",
+                    "description": "Maximum cohort AF for dominant short variants. Set to null to disable.",
+                    "default": null
+                },
+                "FILTER_SHORT_COH_REC_MAX_AF": {
+                    "type": "number",
+                    "description": "Maximum cohort AF for recessive short variants. Set to null to disable.",
+                    "default": null
+                },
+                "FILTER_SHORT_COH_DOM_MAX_AC": {
+                    "type": "integer",
+                    "description": "Maximum cohort AC for dominant short variants. Set to null to disable.",
+                    "default": null
+                },
+                "FILTER_SHORT_COH_REC_MAX_AC": {
+                    "type": "integer",
+                    "description": "Maximum cohort AC for recessive short variants. Set to null to disable.",
+                    "default": null
+                },
+                "FILTER_SHORT_CLINVAR_LIST_ONLY": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Restrict ClinVar variant reporting to genes in the gene list only."
+                },
+                "FILTER_SHORT_CLINVAR_KEEP_PAT": {
+                    "type": "string",
+                    "default": "(p|P)athogenic(?!ity)",
+                    "description": "Regex pattern for ClinVar significance values to keep."
+                },
+                "FILTER_SHORT_CLINVAR_DISC_PAT": {
+                    "type": "string",
+                    "default": "(b|B)enign",
+                    "description": "Regex pattern for ClinVar significance values to discard."
+                },
+                "FILTER_SHORT_LOF": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable TYPE='LOF' (VEP IMPACT == 'HIGH') variant class."
+                },
+                "FILTER_SHORT_MISSENSE": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable TYPE='MISSENSE' (VEP CSQ contains 'missense') variant class."
+                },
+                "FILTER_SHORT_SPLICING": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable TYPE='SPLICING' variant class."
+                },
+                "FILTER_SHORT_PROMOTER": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable TYPE='PROMOTER' variant class."
+                },
+                "FILTER_SHORT_OTHER": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable TYPE='OTHER' variant class."
+                },
+                "FILTER_SHORT_MIN_CADD_PP": {
+                    "type": "number",
+                    "default": 25.3,
+                    "description": "Minimum CADD Phred score to force inclusion (ClinGen PP3 supporting threshold)."
+                },
+                "FILTER_SHORT_MIN_SPLICEAI_PP": {
+                    "type": "number",
+                    "default": 0.20,
+                    "description": "Minimum SpliceAI score to force inclusion (ClinGen PP3 supporting threshold)."
+                },
+                "FILTER_SHORT_VEP_MIN_IMPACT": {
+                    "type": "string",
+                    "default": "MODERATE",
+                    "description": "Minimum VEP impact to retain as TYPE='OTHER'. One of: MODIFIER, LOW, MODERATE, HIGH.",
+                    "enum": ["MODIFIER", "LOW", "MODERATE", "HIGH"]
+                },
+                "FILTER_SHORT_VEP_CONSEQUENCES": {
+                    "type": "string",
+                    "description": "Comma-separated VEP consequences to retain as TYPE='OTHER'. Set to null to disable.",
+                    "default": null
+                },
+                "FILTER_SHORT_MAX_PROMOTERAI": {
+                    "type": "number",
+                    "default": -0.50,
+                    "description": "Maximum PromoterAI score for promoter variants. High precision: -0.5, balanced: -0.2, high recall: -0.1."
+                }
+            }
+        },
+        "struc_variant_options": {
+            "title": "Structural variant options",
+            "type": "object",
+            "description": "Processing options and reference data for structural variants.",
+            "properties": {
+                "struc_vcf_filter": {
+                    "type": "string",
+                    "default": "PASS,.",
+                    "description": "Apply FILTER to input structural variant VCF (comma-separated FILTER values to retain)."
+                },
+                "struc_info": {
+                    "type": "array",
+                    "default": ["AC", "AF", "AN", "SVTYPE", "SVLEN", "END"],
+                    "description": "INFO fields to keep from the structural variant VCF.",
+                    "hidden": true
+                },
+                "struc_format": {
+                    "type": "array",
+                    "default": ["GT"],
+                    "description": "FORMAT fields to keep from the structural variant VCF.",
+                    "hidden": true
+                },
+                "struc_fill_tags": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Fill AC, AF, and AN tags for structural variants using bcftools +fill-tags."
+                },
+                "struc_n_shards": {
+                    "type": "integer",
+                    "default": 20,
+                    "description": "Number of shards for parallel structural variant processing."
+                },
+                "max_struc_per_deck": {
+                    "type": "integer",
+                    "default": 500,
+                    "description": "Maximum number of structural variants per slide deck."
+                },
+                "svafdb": {
+                    "type": "string",
+                    "default": "annotation/SVAFotate/SVAFotate_core_SV_popAFs.GRCh38.v4.1.bed.gz",
+                    "description": "SVAFotate database path for gnomAD v4.1 SV population frequencies.",
+                    "format": "file-path"
+                },
+                "pop_sv": {
+                    "type": "string",
+                    "default": "annotation/gnomAD/gnomad.v4.1.sv.sites.clean.vcf.gz",
+                    "description": "gnomAD v4.1 SV sites VCF file.",
+                    "format": "file-path"
+                },
+                "ref_gene": {
+                    "type": "string",
+                    "default": "annotation/misc/ncbiRefSeqSelect.2026-01.tsv",
+                    "description": "NCBI RefSeq Select TSV file (from UCSC Table Browser).",
+                    "format": "file-path"
+                }
+            }
+        },
+        "filtering_struc": {
+            "title": "Structural variant filtering",
+            "type": "object",
+            "description": "Filtering thresholds for structural variants.",
+            "properties": {
+                "FILTER_STRUC_POP_DOM_MAX_AF": {
+                    "type": "number",
+                    "default": 0.0001,
+                    "description": "Maximum population (gnomAD) AF for dominant SVs."
+                },
+                "FILTER_STRUC_POP_REC_MAX_AF": {
+                    "type": "number",
+                    "default": 0.01,
+                    "description": "Maximum population (gnomAD) AF for recessive SVs."
+                },
+                "FILTER_STRUC_POP_DOM_MAX_HOM": {
+                    "type": "integer",
+                    "description": "Maximum population (gnomAD) homozygote count for dominant SVs. Set to null to disable.",
+                    "default": null
+                },
+                "FILTER_STRUC_POP_REC_MAX_HOM": {
+                    "type": "integer",
+                    "description": "Maximum population (gnomAD) homozygote count for recessive SVs. Set to null to disable.",
+                    "default": null
+                },
+                "FILTER_STRUC_COH_DOM_MAX_AF": {
+                    "type": "number",
+                    "default": 0.01,
+                    "description": "Maximum cohort AF for dominant SVs."
+                },
+                "FILTER_STRUC_COH_REC_MAX_AF": {
+                    "type": "number",
+                    "default": 0.01,
+                    "description": "Maximum cohort AF for recessive SVs."
+                },
+                "FILTER_STRUC_COH_DOM_MAX_AC": {
+                    "type": "integer",
+                    "description": "Maximum cohort AC for dominant SVs. Set to null to disable.",
+                    "default": null
+                },
+                "FILTER_STRUC_COH_REC_MAX_AC": {
+                    "type": "integer",
+                    "description": "Maximum cohort AC for recessive SVs. Set to null to disable.",
+                    "default": null
+                },
+                "FILTER_STRUC_SVTYPES": {
+                    "type": "string",
+                    "default": "DEL,DUP,INS,INV",
+                    "description": "Comma-separated list of SV types to retain. Note: BND is currently excluded upstream due to a VEP issue."
+                },
+                "FILTER_STRUC_VEP_MIN_IMPACT": {
+                    "type": "string",
+                    "default": "LOW",
+                    "description": "Minimum VEP impact for SVs. One of: MODIFIER, LOW, MODERATE, HIGH.",
+                    "enum": ["MODIFIER", "LOW", "MODERATE", "HIGH"]
+                },
+                "FILTER_STRUC_VEP_CONSEQUENCES": {
+                    "type": "string",
+                    "default": "coding_sequence_variant,non_coding_transcript_exon_variant,TFBS_ablation,regulatory_region_ablation",
+                    "description": "Comma-separated VEP consequences to retain for SVs."
+                },
+                "FILTER_STRUC_LARGE_LENGTH": {
+                    "type": "integer",
+                    "description": "Automatically report SVs larger than this length (bp). Set to null to disable.",
+                    "default": null
+                }
+            }
+        },
+        "reporting": {
+            "title": "Reporting",
+            "type": "object",
+            "description": "Options controlling slide output content.",
+            "properties": {
+                "SLIDE_INFO_SHORT": {
+                    "type": "object",
+                    "description": "Fields to include in short variant slides. Must contain a DEFAULT key; additional keys (e.g. MISSENSE, SPLICING, PROMOTER, OTHER) add type-specific columns.",
+                    "hidden": true
+                },
+                "SLIDE_INFO_STRUC": {
+                    "type": "object",
+                    "description": "Fields to include in structural variant slides. Must contain a DEFAULT key.",
+                    "hidden": true
                 }
             }
         }
     },
     "allOf": [
-        {
-            "$ref": "#/definitions/input_output_options"
-        },
-        {
-            "$ref": "#/definitions/filtering"
-        },
-        {
-            "$ref": "#/definitions/reference_data"
-        },
-        {
-            "$ref": "#/definitions/miscellaneous"
-        }
+        { "$ref": "#/definitions/input_output_options" },
+        { "$ref": "#/definitions/miscellaneous" },
+        { "$ref": "#/definitions/vep_options" },
+        { "$ref": "#/definitions/vcfanno_options" },
+        { "$ref": "#/definitions/short_variant_options" },
+        { "$ref": "#/definitions/filtering_short" },
+        { "$ref": "#/definitions/struc_variant_options" },
+        { "$ref": "#/definitions/filtering_struc" },
+        { "$ref": "#/definitions/reporting" }
     ]
 }

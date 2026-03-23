@@ -4,14 +4,18 @@ include { validate_params } from './functions/validate'
 
 include { SETUP    } from './workflows/setup'
 include { ANNOTATE } from './workflows/annotate'
+include { QC       } from './workflows/qc'
 include { CAVALIER } from './workflows/cavalier'
 
 workflow {
 
     validate_params()
 
-    
     SETUP()
+
+    QC(
+        SETUP.out.check
+    )
 
     ANNOTATE(
         SETUP.out.vcfanno_binary,
@@ -27,7 +31,9 @@ workflow {
             ANNOTATE.out.struc_vcf,
             SETUP.out.pedigree_channel,
             SETUP.out.alignment_channel,
-            SETUP.out.check
+            SETUP.out.check,
+            SETUP.out.versions,
+            QC.out.somalier
         )
     }
 

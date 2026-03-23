@@ -28,6 +28,14 @@ cav_opts$hpo_version     <- cavalier::get_cavalier_opt('hpo_version'    , cavali
 cav_opts$mi_omim_version <- cavalier::get_cavalier_opt('mi_omim_version', cavalier:::get_mi_omim_version())
 cav_opts$gencode_version <- cavalier::get_cavalier_opt('gencode_version', cavalier:::get_gencode_version())
 
+versions <- tribble(
+  ~name, ~version,
+  'HGNC', cav_opts$hgnc_version,
+  'HPO', cav_opts$hpo_version,
+  'Monarch Initiative: OMIM', cav_opts$mi_omim_version,
+  'GENCODE', cav_opts$gencode_version,
+)
+
 hash <- digest::digest(cav_opts)
 # write options
 cat(
@@ -80,9 +88,16 @@ for (id in ext_lists) {
   gene_set <- union(gene_set, na.omit(lst$ensembl_gene_id))
 
   write_tsv(
-    lst, 
-    file = str_c('output/', str_replace_all(id, ':', '_'), '.', hash, '.tsv')
+    lst,
+    file = str_c("output/", str_replace_all(id, ":", "_"), ".", hash, ".tsv")
   )
+  
+  versions <-
+    versions %>%
+    add_row(
+      name = str_c(first(lst$list_name), ' (', first(lst$list_id), ')'),
+      version = first(lst$list_version)
+    )
 }
 
 ####### Region Gene List ###############
@@ -146,6 +161,8 @@ write_lines(
   gene_set,
   file = str_c('output/gene_set.', hash, '.txt')
 )
+
+write_tsv(versions, 'versions.tsv')
 
 
 

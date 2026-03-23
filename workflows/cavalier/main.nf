@@ -26,6 +26,7 @@ include { PPT_TO_PDF  } from '../../modules/local/ppt_to_pdf'
 include { PDF_UNITE   } from '../../modules/local/pdf_unite.nf'
 include { PDF_COPY    } from '../../modules/local/pdf_copy.nf'
 include { PDF_SPLIT   } from '../../modules/local/pdf_split.nf'
+include { VAR_BROWSER } from '../../modules/local/var_browser.nf'
 
 workflow CAVALIER {
     take:
@@ -37,6 +38,8 @@ workflow CAVALIER {
     pedigree_channel
     alignment_channel
     check
+    versions
+    somalier
 
     main:
     /*
@@ -93,10 +96,10 @@ workflow CAVALIER {
     IGV_REPORT(
         FILTER.out.short_igv.map { [it[0], it[1].text.trim()] }
             .join(samples_short)
-            .join(pedigree_channel)
             .join(SPLIT_VEP.out.vcf.filter {it[0] == 'SHORT' }.map { it[[1,2,3]] })
             .join(alignment_channel),
-        ref_fasta_channel()
+        ref_fasta_channel(),
+        path("$projectDir/misc/igv_report_mod.txt")
     )
  
     IGV_TO_PNG(
@@ -194,7 +197,7 @@ workflow CAVALIER {
 
         by_gene = 
             PDF_SPLIT.out.flatten()
-            .map  { [(it.name =~ /([^.]+)\.pdf/)[0][1], it] }
+            .map  { [(it.name =~ /__([^.]+)__/)[0][1], it] }
             .groupTuple()
 
         PDF_UNITE(
@@ -213,14 +216,46 @@ workflow CAVALIER {
     }
 
     /* ----- Save CSV results ----- */
-    collect_csv(
+    short_cand = collect_csv(
         FILTER.out.short_csv.combine(samples_short, by:0).map { it[1] },
         'short_candidates.csv'
     )
 
-    collect_csv(
+    struc_cand = collect_csv(
         FILTER.out.struc_csv.combine(samples_struc, by:0).map { it[1] },
         'struc_candidates.csv'
     )
+
+    safe_params = params.collectMany { k, v ->
+        try   { groovy.json.JsonOutput.toJson(v); [[k, v]] }
+        catch (_e) { try { [[k, v.toString()]] } catch (_e2) { [] } }
+    }.collectEntries()
+
+    params_channel = Channel
+        .value(
+            groovy.json.JsonOutput.prettyPrint(
+                groovy.json.JsonOutput.toJson(safe_params)
+            )
+        )
+        .collectFile(sort:false, name: 'params.json')   
+
+    if (params.make_slides) {
+        VAR_BROWSER(
+            path("${projectDir}/bin/variant_browser.Rmd"),
+            path("${projectDir}/bin/datatable.Rmd"),
+            short_cand,
+            struc_cand,
+            PDF_SPLIT.out          .flatten().map{ it.name }.collectFile(newLine:true, sort:true, name: 'slides.txt'),
+            IGV_REPORT.out.combined.flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'igv_report.txt'),
+            SVPV.out               .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'svpv.txt'),
+            SAMPLOT.out            .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'samplot.txt'),
+            somalier,
+            params_channel,
+            versions,
+            gene_set
+        )
+    }
+
     
+
 }
