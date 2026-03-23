@@ -1,7 +1,7 @@
 
 process SOMALIER {
     label 'C2M4T2'
-    container 'quay.io/biocontainers/somalier:0.3.1--hc78c8e0_0'
+    label 'somalier'
     publishDir "${params.outdir}/qc/", mode: 'copy'
 
     /*

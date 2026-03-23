@@ -2,7 +2,7 @@
 
 process VAR_BROWSER {
     label 'C2M2T2'
-    container null
+    label 'cavalier'
     publishDir "${params.outdir}",      mode: 'copy', pattern: "variant_browser.html"
     publishDir "${params.outdir}/qc",   mode: 'copy', pattern: "*-tbl.html"
 

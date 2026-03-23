@@ -1,6 +1,6 @@
 
 process MAKE_SLIDES {
-    label 'C2M4T4'
+    label 'C2M8T2'
     label 'cavalier'
     publishDir "${params.outdir}/by_family/$fam", mode: 'copy', pattern: "${fam}.pptx"
     tag "$fam"

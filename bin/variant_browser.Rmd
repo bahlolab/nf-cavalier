@@ -51,20 +51,15 @@ cat(sprintf('<script>var _reportTime = "%s";</script>\n', format(Sys.time(), "%Y
   <symbol id="ico-dl"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
   <symbol id="ico-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
 </defs></svg>
-<div id="app-header">
-  <span id="app-title">CAVALIER Variant Browser</span>
-  <div id="app-logo-wrap">
-    <img src="https://www.wehi.edu.au/wp-content/uploads/2023/12/logo@2x-compressed.png" id="app-logo" alt="WEHI logo" height="36">
-  </div>
-</div>
-
 <div id="vtype-container" class="vtype-container">
   <div class="tab-bar">
+    <span id="app-title">CAVALIER</span>
     <button class="tab-btn active" data-tab="vtab-short">Short Variants</button>
     <button class="tab-btn"        data-tab="vtab-struc">Structural Variants</button>
     <button class="tab-btn"        data-tab="vtab-relatedness">QC / Relatedness</button>
     <button class="tab-btn"        data-tab="vtab-ancestry">Ancestry</button>
     <button class="tab-btn"        data-tab="vtab-metadata">Metadata</button>
+    <div id="app-logo-wrap"><img src="https://www.wehi.edu.au/wp-content/uploads/2023/12/logo@2x-compressed.png" id="app-logo" alt="WEHI logo" height="30"></div>
   </div>
   <div id="tab-vtab-short" class="tab-panel active" style="padding:12px;">
 ```
@@ -520,34 +515,40 @@ datatable(gene_set, escape=FALSE, selection="none", rownames=FALSE, filter='top'
 /* ── Global ── */
 body { font-family: 'Segoe UI', system-ui, sans-serif; transition: opacity 0.3s ease-in; }
 
-/* ── Header ── */
-#app-header {
-  background-color: #49A942;
+/* ── Header (merged into vtype tab-bar) ── */
+#vtype-container .tab-bar {
+  background: #49A942;
+  border-radius: 6px 6px 0 0;
+  border-bottom-color: #dee2e6;
+  padding-bottom: 6px;
+  align-items: center;
+}
+#vtype-container .tab-btn { bottom: -9px; }
+#app-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
   color: white;
-  padding: 9px 28px;
-  margin-bottom: 9px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  padding: 8px 12px 8px 4px;
+  white-space: nowrap;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  border-radius: 4px;
+  position: relative;
+  bottom: -2px;
 }
 #app-logo-wrap {
   background-color: white;
   border-radius: 4px;
-  padding: 4px 8px;
+  padding: 3px 7px;
   display: flex;
   align-items: center;
+  margin-left: auto;
+  position: relative;
+  bottom: -2px;
 }
 #app-logo {
-  height: 36px;
+  height: 30px;
   width: auto;
-}
-#app-title {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
 }
 
 /* ── DataTable ── */
@@ -581,7 +582,7 @@ table.dataTable thead td {
 /* ── Containers (vtype + viewer) ── */
 .vtype-container, .viewer-container {
   border: 1px solid #dee2e6;
-  border-radius: 0 6px 6px 6px;
+  border-radius: 6px;
   box-shadow: 0 3px 10px rgba(0,0,0,0.08);
 }
 .vtype-container  { margin-bottom: 14px; overflow-x: auto; }
@@ -594,6 +595,7 @@ table.dataTable thead td {
   gap: 4px;
   border-bottom: 2px solid #49A942;
   background: #f4f4f4;
+  border-radius: 6px 6px 0 0;
   padding: 8px 8px 0;
   margin-bottom: 0;
 }
@@ -612,12 +614,17 @@ table.dataTable thead td {
   transition: color 0.15s, background 0.15s;
 }
 .tab-btn:hover:not(.active) { background: #e4e4e4; color: #333; }
+#vtype-container .tab-btn:not(.active) { background: #f4f4f4; }
+#vtype-container .tab-btn:hover:not(.active) { background: #e4e4e4; color: #333; }
+#vtype-container .tab-btn.active { border-color: #2372B9; }
 .tab-btn-wrap .tab-btn:hover:not(.active) { background: transparent; color: #555; }
 .tab-btn-wrap:not(:has(.tab-btn.active)):hover .tab-btn,
 .tab-btn-wrap:not(:has(.tab-btn.active)):hover .dl-icon-btn { background: #e4e4e4; color: #333; }
 .tab-btn.active {
   background: white;
-  border-color: #49A942;
+  border: 2px solid #49A942;
+  border-bottom: none;
+  padding: 7px 23px 8px;
   color: #2372B9;
   font-weight: 600;
 }
@@ -649,8 +656,9 @@ table.dataTable thead td {
 .tab-btn.active ~ .dl-icon-btn,
 .tab-btn-wrap:has(.tab-btn.active) .dl-icon-btn {
   background: white;
-  border-color: #49A942;
+  border: 2px solid #49A942;
   border-left: none;
+  border-bottom: none;
   color: #555;
 }
 .tab-btn-wrap:has(.tab-btn.active) .dl-icon-btn:hover { background: #d4edda !important; color: #2a7a25 !important; }
@@ -661,6 +669,7 @@ table.dataTable thead td {
 .main-container { width: 95% !important; max-width: 95% !important; }
 
 .tab-panel iframe { width: 100%; height: 800px; border: none; display: block; }
+#viewer-somalier .tab-panel iframe { height: 600px; }
 .btn-bar { padding: 10px 12px 0; }
 
 .citation {
