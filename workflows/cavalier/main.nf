@@ -40,6 +40,7 @@ workflow CAVALIER {
     check
     versions
     somalier
+    sce
 
     main:
     /*
@@ -243,6 +244,7 @@ workflow CAVALIER {
         VAR_BROWSER(
             path("${projectDir}/bin/variant_browser.Rmd"),
             path("${projectDir}/bin/datatable.Rmd"),
+            path("${projectDir}/bin/sce.Rmd"),
             short_cand,
             struc_cand,
             PDF_SPLIT.out          .flatten().map{ it.name }.collectFile(newLine:true, sort:true, name: 'slides.txt'),
@@ -252,7 +254,8 @@ workflow CAVALIER {
             somalier,
             params_channel,
             versions,
-            gene_set
+            gene_set,
+            sce
         )
     }
 

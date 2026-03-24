@@ -26,9 +26,10 @@ dt_coldefs <- function(df, n_default, n_internal = 3) {
 
 ```{r somalier_exists, echo=FALSE, results='asis'}
 cat(sprintf(
-  '<script>var _hasSomalier = %s; var _hasAncestry = %s;</script>\n',
+  '<script>var _hasSomalier = %s; var _hasAncestry = %s; var _hasSce = %s;</script>\n',
   tolower(file.exists("somalier.html")),
-  tolower(file.exists("somalier-ancestry.html"))
+  tolower(file.exists("somalier-ancestry.html")),
+  tolower(file.exists("sce.html"))
 ))
 ```
 
@@ -58,6 +59,7 @@ cat(sprintf('<script>var _reportTime = "%s";</script>\n', format(Sys.time(), "%Y
     <button class="tab-btn"        data-tab="vtab-struc">Structural Variants</button>
     <button class="tab-btn"        data-tab="vtab-relatedness">QC / Relatedness</button>
     <button class="tab-btn"        data-tab="vtab-ancestry">Ancestry</button>
+    <button class="tab-btn"        data-tab="vtab-contamination">Contamination</button>
     <button class="tab-btn"        data-tab="vtab-metadata">Metadata</button>
     <div id="app-logo-wrap"><img src="https://www.wehi.edu.au/wp-content/uploads/2023/12/logo@2x-compressed.png" id="app-logo" alt="WEHI logo" height="30"></div>
   </div>
@@ -295,6 +297,9 @@ datatable(
   </div>
   <div id="tab-vtab-ancestry" class="tab-panel">
     <iframe id="iframe-somalier-ancestry" style="width:100%;max-width:1200px;height:700px;border:none;display:block;margin:0 auto;"></iframe>
+  </div>
+  <div id="tab-vtab-contamination" class="tab-panel">
+    <iframe id="iframe-sce" style="width:100%;height:1000px;border:none;display:block;"></iframe>
   </div>
   <div id="tab-vtab-metadata" class="tab-panel">
     <div class="gene-info-panel">
@@ -897,8 +902,9 @@ $(document).ready(function() {
     });
   });
   document.getElementById('tab-vtab-struc').classList.remove('active');
-  if (!_hasSomalier) document.querySelector('[data-tab="vtab-relatedness"]').style.display = 'none';
+  if (!_hasSomalier)  document.querySelector('[data-tab="vtab-relatedness"]').style.display = 'none';
   if (!_hasAncestry)  document.querySelector('[data-tab="vtab-ancestry"]').style.display = 'none';
+  if (!_hasSce)       document.querySelector('[data-tab="vtab-contamination"]').style.display = 'none';
   document.getElementById('meta-report-time').innerHTML = pill(_reportTime, '#49A942');
   var pre = document.getElementById('meta-params-content');
   try {
@@ -958,6 +964,13 @@ document.addEventListener('click', function(e) {
   if (tab === 'vtab-metadata') {
     setViewers(false, false, false);
     document.getElementById('shared-panels').style.display = 'none';
+    return;
+  }
+  if (tab === 'vtab-contamination') {
+    setViewers(false, false, false);
+    document.getElementById('shared-panels').style.display = 'none';
+    var iframeSce = document.getElementById('iframe-sce');
+    if (!iframeSce.src || iframeSce.src === window.location.href) iframeSce.src = 'qc/sce.html';
     return;
   }
   if (tab === 'vtab-relatedness' || tab === 'vtab-ancestry') {

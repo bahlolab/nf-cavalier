@@ -33,7 +33,8 @@ workflow {
             SETUP.out.alignment_channel,
             SETUP.out.check,
             SETUP.out.versions,
-            QC.out.somalier
+            QC.out.somalier,
+            QC.out.sce
         )
     }
 
