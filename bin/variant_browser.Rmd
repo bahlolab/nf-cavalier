@@ -57,9 +57,14 @@ cat(sprintf('<script>var _reportTime = "%s";</script>\n', format(Sys.time(), "%Y
     <span id="app-title">CAVALIER</span>
     <button class="tab-btn active" data-tab="vtab-short">Short Variants</button>
     <button class="tab-btn"        data-tab="vtab-struc">Structural Variants</button>
-    <button class="tab-btn"        data-tab="vtab-relatedness">QC / Relatedness</button>
-    <button class="tab-btn"        data-tab="vtab-ancestry">Ancestry</button>
-    <button class="tab-btn"        data-tab="vtab-contamination">Contamination</button>
+    <span id="qc-tab-group">
+      <button class="tab-btn qc-tab-btn" id="btn-qc">QC ▾</button>
+      <div class="qc-dropdown" id="qc-dropdown">
+        <button class="qc-item tab-btn" id="qcitem-relatedness"   data-tab="vtab-relatedness">Somalier Relate</button>
+        <button class="qc-item tab-btn" id="qcitem-ancestry"      data-tab="vtab-ancestry">Somalier Ancestry</button>
+        <button class="qc-item tab-btn" id="qcitem-contamination" data-tab="vtab-contamination">Contamination</button>
+      </div>
+    </span>
     <button class="tab-btn"        data-tab="vtab-metadata">Metadata</button>
     <div id="app-logo-wrap"><img src="https://www.wehi.edu.au/wp-content/uploads/2023/12/logo@2x-compressed.png" id="app-logo" alt="WEHI logo" height="30"></div>
   </div>
@@ -830,6 +835,24 @@ details.pa-entry:not([open]) > .pa-header::before { transform: rotate(-90deg); }
   white-space: nowrap;
 }
 .dl-item:hover { background: #f5f5f5; color: #111; }
+
+/* ── QC tab dropdown ── */
+.qc-dropdown {
+  display: none;
+  position: fixed;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+  z-index: 1000;
+  min-width: 160px;
+  padding: 4px 0;
+}
+.qc-dropdown.open { display: block; }
+#qc-dropdown .tab-btn { display: block; width: 100%; text-align: left; border-radius: 2px; bottom: 0; padding: 8px 14px; }
+#qc-dropdown .tab-btn:not(.active) { background: none; border: none; }
+#qc-dropdown .tab-btn:hover:not(.active) { background: #f5f5f5; color: #333; }
+#qc-dropdown .tab-btn.active { background: #f0f8ee; border: none; padding: 8px 14px; color: #2a7a25; font-weight: 600; }
 </style>
 
 <script>
@@ -902,9 +925,10 @@ $(document).ready(function() {
     });
   });
   document.getElementById('tab-vtab-struc').classList.remove('active');
-  if (!_hasSomalier)  document.querySelector('[data-tab="vtab-relatedness"]').style.display = 'none';
-  if (!_hasAncestry)  document.querySelector('[data-tab="vtab-ancestry"]').style.display = 'none';
-  if (!_hasSce)       document.querySelector('[data-tab="vtab-contamination"]').style.display = 'none';
+  if (!_hasSomalier)  document.getElementById('qcitem-relatedness').style.display = 'none';
+  if (!_hasAncestry)  document.getElementById('qcitem-ancestry').style.display = 'none';
+  if (!_hasSce)       document.getElementById('qcitem-contamination').style.display = 'none';
+  if (!_hasSomalier && !_hasAncestry && !_hasSce) document.getElementById('qc-tab-group').style.display = 'none';
   document.getElementById('meta-report-time').innerHTML = pill(_reportTime, '#49A942');
   var pre = document.getElementById('meta-params-content');
   try {
@@ -945,11 +969,24 @@ function setViewers(showShort, showStruc, showSomalier) {
 
 // All tab switching
 document.addEventListener('click', function(e) {
+  if (!e.target.closest('#qc-tab-group')) document.getElementById('qc-dropdown').classList.remove('open');
+  if (e.target.matches('#btn-qc')) {
+    var menu = document.getElementById('qc-dropdown');
+    var rect = e.target.getBoundingClientRect();
+    menu.style.top  = (rect.bottom + 2) + 'px';
+    menu.style.left = rect.left + 'px';
+    menu.classList.toggle('open');
+    return;
+  }
   if (!e.target.matches('.tab-btn')) return;
   var tab       = e.target.getAttribute('data-tab');
   var container = e.target.closest('.viewer-container, .vtype-container');
   _activeTabs[container.id] = tab;
   switchTab(container, tab);
+  if (e.target.closest('#qc-dropdown')) {
+    document.getElementById('btn-qc').classList.add('active');
+    document.getElementById('qc-dropdown').classList.remove('open');
+  }
 
   // Vtype tab: show the matching viewer, hide the other; sync shared panels
   if (tab === 'vtab-short' || tab === 'vtab-struc') {
