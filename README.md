@@ -3,6 +3,9 @@
 Nextflow pipeline for singleton and family based candidate variant reporting based on gene lists. Variants are reported in CSV, Powerpoint and PDF format. Supports joint SNV/Indel and Structural Variant analysis.
 
 ## Overview
+* Variants are annotated with vcfanno, svafotate and VEP
+* Variants are filtered by family based on inheritance, population frequency, predicted impact and gene lists
+* Candidate variants are reported along with IGV and Structural variant visualisations
 
 ```mermaid
 graph LR
