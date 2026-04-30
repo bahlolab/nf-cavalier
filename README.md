@@ -26,13 +26,47 @@ graph LR
     class inputs,outputs io
 ```
 
+## Prerequisites
+* [Nextflow](https://www.nextflow.io/) >= 24.04
+* A container runtime: [Docker](https://www.docker.com/), [Singularity](https://sylabs.io/singularity/) or [Apptainer](https://apptainer.org/)
+
 ## Installation
 * Clone this repository
 
 ## Usage
 1. Create and navigate to run working directory
 2. Download required annotation sources - see [annotations](#annotations)
-3. Create configuration file in run directory named `nextflow.config` - see [parameters](#parameters)
+3. Create a configuration file named `nextflow.config` in the run directory - see [parameters](#parameters) for all options. Minimal example:
+    ```nextflow
+    params {
+        // Inputs
+        alignments = 'alignments.tsv'
+        ped        = 'family.ped'          // omit for singletons
+        short_vcf  = 'cohort.snv.vcf.gz'
+        struc_vcf  = 'cohort.sv.vcf.gz'
+        lists      = 'PAA:202,my_genes.tsv'
+
+        // Reference
+        ref_fasta = '/path/to/GRCh38.fasta'
+        ref_gene  = '/path/to/ncbiRefSeqSelect.tsv'
+
+        // VEP
+        vep_cache          = '/path/to/vep_cache'
+        vep_cache_ver      = '115'
+        vep_spliceai_snv   = '/path/to/spliceai_scores.masked.snv.hg38.vcf.gz'
+        vep_spliceai_indel = '/path/to/spliceai_scores.masked.indel.hg38.vcf.gz'
+        vep_alphamissense  = '/path/to/AlphaMissense_hg38.tsv.gz'
+        vep_revel          = '/path/to/new_tabbed_revel_grch38.tsv.gz'
+        vep_utr_annotator  = '/path/to/uORF_5UTR_GRCh38_PUBLIC.txt'
+
+        // Annotation databases - see Annotations section
+        vcfanno_gnomad     = '/path/to/gnomad.joint.v4.1.vcf.gz'
+        vcfanno_cadd_snv   = '/path/to/whole_genome_SNVs.tsv.gz'
+        vcfanno_cadd_indel = '/path/to/gnomad.genomes.r4.0.indel.tsv.gz'
+        vcfanno_clinvar    = '/path/to/clinvar.vcf.gz'
+        svafdb             = '/path/to/SVAFotate_core_SV_popAFs.GRCh38.v4.1.bed.gz'
+    }
+    ```
 4. Run nf-cavalier  
   
     ```
@@ -51,9 +85,9 @@ The following parameters may be set in the Nextflow configuration file:
 |-----------|---------|-------------|
 | `alignments` | - | TSV file with alignment file paths (Col 1: sample ID, Col 2: BAM or CRAM path) |
 | `lists` | - | Gene lists, comma separated (TSV or ID) - [see below](#gene-lists) |
-| `ped` | - | Pedigree file (required for familial analysis, leave blank for singletons) [see below](#pedigree) |
-| `short_vcf` | - | Input VCF for short variants (SNVs/Indels) |
-| `struc_vcf` | - | Input VCF for structural variants |
+| `ped` | - | Pedigree file (required for familial analysis; omit for singleton analysis) [see below](#pedigree) |
+| `short_vcf` | - | Input VCF for short variants (SNVs/Indels) — at least one of `short_vcf`/`struc_vcf` required |
+| `struc_vcf` | - | Input VCF for structural variants — at least one of `short_vcf`/`struc_vcf` required |
 | `ref_fasta` | - | GRCh38 reference FASTA file |
 | `vep_cache` | - | VEP cache directory - [see here](https://www.ensembl.org/info/docs/tools/vep/script/vep_cache.html) |
 | `vep_cache_ver` | `'115'` | VEP cache version |
@@ -70,44 +104,67 @@ The following parameters may be set in the Nextflow configuration file:
 | `ref_gene` | - | NCBI RefSeq Select (UCSC) TSV - [available here](https://genome.ucsc.edu/cgi-bin/hgTables?hgsid=3670191553_zqnYvk2x5XApGbDxqWZWmWYbAFNP&clade=mammal&org=&db=hg38&hgta_group=genes&hgta_track=refSeqComposite&hgta_table=ncbiRefSeqSelect&hgta_regionType=genome&position=&hgta_outputType=primaryTable&hgta_outFileName=ncbiRefSeqSelect.tsv) |
 
 ### Optional
+
+**General**
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `outdir` | `'output'` | Output directory |
-| `short_vcf_annotated` | `null` | Pre-annotated short variant VCF (skips annotation) |
-| `struc_vcf_annotated` | `null` | Pre-annotated structural variant VCF (skips annotation) |
-| `max_short_per_deck` | `500` | Maximum number of short variants per slide deck |
-| `max_struc_per_deck` | `500` | Maximum number of structural variants per slide deck |
 | `annotate_only` | `false` | Only performs annotation, no filtering or reporting of variants |
 | `make_slides` | `true` | Output PPT/PDF slides |
-| `vep_check` | `true` | Check number of variants output by VEP equal to number input |
+
+**Short Variant Processing**
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `short_vcf_annotated` | `null` | Pre-annotated short variant VCF (skips annotation) |
 | `short_n_shards` | `200` | Split input VCF into shards for parallel processing |
 | `short_vcf_filter` | `"PASS,."` | Apply filter to input short variants |
 | `short_info` | `['AC', 'AF', 'AN']` | INFO fields to keep from VCF |
 | `short_format` | `['GT', 'GQ', 'DP']` | FORMAT fields to keep from VCF |
 | `short_fill_tags` | `false` | Fill AC, AF, and AN from VCF |
 | `short_vcfanno_filter` | `'gnomad_AF<0.01 \|\| gnomad_AF="."'` | Filter to apply after vcfanno |
-| `FILTER_SHORT_MIN_DP` | `5` | Minimum Depth for short variants |
-| `FILTER_SHORT_MIN_GQ` | `10` | Minimum Genotype Quality for short variants |
-| `FILTER_SHORT_POP_DOM_MAX_AF` | `0.0001` | Max population AF for dominant short variants |
-| `FILTER_SHORT_POP_REC_MAX_AF` | `0.01` | Max population AF for recessive short variants |
-| `FILTER_SHORT_POP_DOM_MAX_AC` | `20` | Max population AC for dominant short variants |
-| `FILTER_SHORT_POP_REC_MAX_AC` | `100` | Max population AC for recessive short variants |
-| `FILTER_SHORT_POP_DOM_MAX_HOM` | `5` | Max population homozygotes for dominant short variants |
-| `FILTER_SHORT_POP_REC_MAX_HOM` | `20` | Max population homozygotes for recessive short variants |
-| `FILTER_SHORT_COH_DOM_MAX_AF` | `null` | Max cohort AF for dominant short variants |
-| `FILTER_SHORT_COH_REC_MAX_AF` | `null` | Max cohort AF for recessive short variants |
-| `FILTER_SHORT_COH_DOM_MAX_AC` | `null` | Max cohort AC for dominant short variants |
-| `FILTER_SHORT_COH_REC_MAX_AC` | `null` | Max cohort AC for recessive short variants |
+| `vep_check` | `true` | Check number of variants output by VEP equal to number input |
+
+**Short Variant Filters**
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `FILTER_SHORT_MIN_DP` | `5` | Minimum depth |
+| `FILTER_SHORT_MIN_GQ` | `10` | Minimum genotype quality |
+| `FILTER_SHORT_POP_DOM_MAX_AF` | `0.0001` | Max population AF for dominant variants |
+| `FILTER_SHORT_POP_REC_MAX_AF` | `0.01` | Max population AF for recessive variants |
+| `FILTER_SHORT_POP_DOM_MAX_AC` | `10` | Max population AC for dominant variants |
+| `FILTER_SHORT_POP_REC_MAX_AC` | `1000` | Max population AC for recessive variants |
+| `FILTER_SHORT_POP_DOM_MAX_HOM` | `1` | Max population homozygotes for dominant variants |
+| `FILTER_SHORT_POP_REC_MAX_HOM` | `10` | Max population homozygotes for recessive variants |
+| `FILTER_SHORT_COH_DOM_MAX_AF` | `null` | Max cohort AF for dominant variants |
+| `FILTER_SHORT_COH_REC_MAX_AF` | `null` | Max cohort AF for recessive variants |
+| `FILTER_SHORT_COH_DOM_MAX_AC` | `null` | Max cohort AC for dominant variants |
+| `FILTER_SHORT_COH_REC_MAX_AC` | `null` | Max cohort AC for recessive variants |
 | `FILTER_SHORT_CLINVAR_LIST_ONLY` | `true` | Restrict ClinVar reporting to list genes only |
 | `FILTER_SHORT_CLINVAR_KEEP_PAT` | `'(p\|P)athogenic(?!ity)'` | Regex for keeping ClinVar pathogenic variants |
 | `FILTER_SHORT_CLINVAR_DISC_PAT` | `'(b\|B)enign'` | Regex for discarding ClinVar benign variants |
 | `FILTER_SHORT_LOF` | `true` | Enable TYPE='LOF' (VEP IMPACT == 'HIGH') |
 | `FILTER_SHORT_MISSENSE` | `true` | Enable TYPE='MISSENSE' (VEP CSQ contains 'missense') |
 | `FILTER_SHORT_SPLICING` | `true` | Enable TYPE='SPLICING' |
+| `FILTER_SHORT_PROMOTER` | `false` | Enable TYPE='PROMOTER' variant class |
+| `FILTER_SHORT_OTHER` | `true` | Enable TYPE='OTHER' (VEP MODERATE impact variants not covered by other types) |
 | `FILTER_SHORT_MIN_CADD_PP` | `25.3` | Minimum CADD Phred score to force inclusion in results |
 | `FILTER_SHORT_MIN_SPLICEAI_PP` | `0.20` | Minimum SpliceAI score to force inclusion in results |
-| `FILTER_SHORT_VEP_MIN_IMPACT` | `'MODERATE'` | Minimum VEP Impact to retain |
+| `FILTER_SHORT_VEP_MIN_IMPACT` | `'MODERATE'` | Minimum VEP impact to retain |
 | `FILTER_SHORT_VEP_CONSEQUENCES` | `null` | Specific VEP consequences to retain |
+
+**Structural Variant Processing**
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `struc_vcf_annotated` | `null` | Pre-annotated structural variant VCF (skips annotation) |
+| `struc_n_shards` | `20` | Number of shards for parallel SV processing |
+| `struc_vcf_filter` | `"PASS,."` | Apply VCF filter to structural variant VCF |
+| `struc_info` | `['AC', 'AF', 'AN', 'SVTYPE', 'SVLEN', 'END']` | INFO fields to keep from SV VCF |
+| `struc_format` | `['GT']` | FORMAT fields to keep from SV VCF |
+| `struc_fill_tags` | `false` | Fill AC, AF, AN tags for SVs |
+
+**Structural Variant Filters**
+| Parameter | Default | Description |
+|-----------|---------|-------------|
 | `FILTER_STRUC_POP_DOM_MAX_AF` | `0.0001` | Max population AF for dominant SVs |
 | `FILTER_STRUC_POP_REC_MAX_AF` | `0.01` | Max population AF for recessive SVs |
 | `FILTER_STRUC_POP_DOM_MAX_HOM` | `null` | Max population homozygotes for dominant SVs |
@@ -116,17 +173,18 @@ The following parameters may be set in the Nextflow configuration file:
 | `FILTER_STRUC_COH_REC_MAX_AF` | `0.01` | Max cohort AF for recessive SVs |
 | `FILTER_STRUC_COH_DOM_MAX_AC` | `null` | Max cohort AC for dominant SVs |
 | `FILTER_STRUC_COH_REC_MAX_AC` | `null` | Max cohort AC for recessive SVs |
-| `FILTER_STRUC_SVTYPES` | `'DEL,DUP,INS,INV'` | SV Types to retain |
-| `FILTER_STRUC_VEP_MIN_IMPACT` | `'LOW'` | Minimum VEP Impact for SVs |
-| `FILTER_STRUC_VEP_CONSEQUENCES` |  | Specific VEP consequences to keep for SVs |
+| `FILTER_STRUC_SVTYPES` | `'DEL,DUP,INS,INV'` | SV types to retain |
+| `FILTER_STRUC_VEP_MIN_IMPACT` | `'LOW'` | Minimum VEP impact for SVs |
+| `FILTER_STRUC_VEP_CONSEQUENCES` | `'coding_sequence_variant,non_coding_transcript_exon_variant,TFBS_ablation,regulatory_region_ablation'` | Specific VEP consequences to keep for SVs |
 | `FILTER_STRUC_LARGE_LENGTH` | `null` | Automatically report SVs larger than this length |
+
+**Reporting**
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `max_short_per_deck` | `500` | Maximum number of short variants per slide deck |
+| `max_struc_per_deck` | `500` | Maximum number of structural variants per slide deck |
 | `SLIDE_INFO_SHORT` | `[Map]` | Fields to include in short variant slides - [see below](#slide-info)|
 | `SLIDE_INFO_STRUC` | `[Map]` | Fields to include in structural variant slides - [see below](#slide-info)|
-| `struc_vcf_filter` | `"PASS,."` | Apply VCF filter to structural variant VCF |
-| `struc_info` | `['AC', 'AF', 'AN', 'SVTYPE', 'SVLEN', 'END']` | INFO fields to keep from SV VCF |
-| `struc_format` | `['GT']` | FORMAT fields to keep from SV VCF |
-| `struc_fill_tags` | `false` | Fill AC, AF, AN tags for SVs |
-| `struc_n_shards` | `20` | Number of shards for parallel SV processing |
 
 ### Gene Lists
 * Gene lists are passed as a comma separated set of gene lists to use for filtering. This may be a local TSV file, e.g. 'my_gene_list.tsv' or a web based gene list, e.g. [PAA:289](https://panelapp.agha.umccr.org/panels/289/).
@@ -152,8 +210,8 @@ The following parameters may be set in the Nextflow configuration file:
               
     * **Web List** - Cavalier will automatically retrieve the latest version of these web lists
       * **PanelApp**: PanelApp Australia or PanelApp Genomics England lists may be specified with "PAA:" or "PAE:" prefix respectively. e.g. [PAA:202](https://panelapp-aus.org/panels/202/)
-      * **HPO**: Human phenotype ontology terms may be specified with the "HP:" prefex, e.g. [HP:0001250](https://hpo.jax.org/browse/term/HP:0001250)
-      * **Genes4Epilepsy**: [Genes4Epilepsy](https://github.com/bahlolab/Genes4Epilepsy) lists may be specified with the "G4E:" prexif, e.g. "G4E:ALL" for All Epilepsy genes, or "G4E:Focal" for Focal epilepsy genes only (options: "ALL", "Focal", "MCD", "DEE", "PME", "GGE").
+      * **HPO**: Human phenotype ontology terms may be specified with the "HP:" prefix, e.g. [HP:0001250](https://hpo.jax.org/browse/term/HP:0001250)
+      * **Genes4Epilepsy**: [Genes4Epilepsy](https://github.com/bahlolab/Genes4Epilepsy) lists may be specified with the "G4E:" prefix, e.g. "G4E:ALL" for All Epilepsy genes, or "G4E:Focal" for Focal epilepsy genes only (options: "ALL", "Focal", "MCD", "DEE", "PME", "GGE").
       * **HGNC**: Gene subsets by locus group can be extracted from HGNC, for example "HGNC:protein-coding" will give a list of all protein coding genes
     * **Genomic Region** - by specifying a genomic region such as "chr1:1000000-2000000", cavalier will extract all ensemble/gencode genes in that region.
 
@@ -175,7 +233,6 @@ The following parameters may be set in the Nextflow configuration file:
                 'gnomAD v4.1': 'gnomAD', 
                 Cohort       : 'Cohort',
                 PhyloP100    : 'phyloP100',
-                SpliceAI     : 'SpliceAI',
                 'CADD v1.7'  : 'CADD',
             ],
             MISSENSE: [
@@ -183,6 +240,9 @@ The following parameters may be set in the Nextflow configuration file:
                 AlphaMissense: 'AlphaMissense',
                 SIFT         : 'SIFT',
                 PolyPhen     : 'PolyPhen',
+            ],
+            SPLICING: [
+                SpliceAI     : 'SpliceAI',
             ]
         ]
       SLIDE_INFO_STRUC = [
@@ -192,9 +252,7 @@ The following parameters may be set in the Nextflow configuration file:
               Consequence  : 'Consequence',
               HGVS         : 'HGVS',
              'SV Type'     : 'SVTYPE',
-              Chromosome   : 'CHROM',
-              Position     : 'POS',
-              End          : 'END',
+              Region       : 'Region',
               Length       : 'SVLEN',
               'gnomAD v4.1': 'gnomAD',
               Cohort       : 'Cohort'
@@ -202,7 +260,7 @@ The following parameters may be set in the Nextflow configuration file:
       ]
   }
   ```
-* "DEFAULT" fileds are reported for all variants of each class, whereas "MISSENSE" are only reported for missense variants
+* "DEFAULT" fields are reported for all variants of each class. Named sections (e.g. "MISSENSE", "SPLICING") are appended only for variants of that type.
 
 ## Annotations
 ### CADD
