@@ -1,0 +1,231 @@
+---
+pagetitle: "Sample Contamination Estimate"
+params:
+  input: "sample-contamination-estimate.tsv"
+  prefix: "sce"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(DT)
+library(plotly)
+
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  WARN = FALSE
+)
+```
+
+```{r load, include=FALSE}
+df <-
+  read_tsv(params$input, comment = "##") %>%
+  rename_with(~ str_replace(., "^#", "")) %>%
+  mutate(
+    FLAG = case_when(
+      CHARR > 0.03 | INCONSISTENT_AB_HET_RATE > 0.15 ~ "FAIL",
+      CHARR > 0.02 | INCONSISTENT_AB_HET_RATE > 0.10 ~ "WARN",
+      TRUE ~ "PASS"
+    ),
+    FLAG = factor(FLAG, levels = c("PASS", "WARN", "FAIL"))
+  ) %>%
+  select(SAMPLE, FLAG, CHARR, INCONSISTENT_AB_HET_RATE, everything())
+
+flag_colours <- c(PASS = "#2ca02c", WARN = "#ff7f0e", FAIL = "#d62728")
+```
+
+<div class="report-header">
+  <div class="report-header-title">Sample Contamination Estimation</div>
+</div>
+
+```{r plot, echo=FALSE}
+p <- plot_ly(
+  df,
+  x             = ~CHARR,
+  y             = ~INCONSISTENT_AB_HET_RATE,
+  type          = "scatter",
+  mode          = "markers",
+  color         = ~FLAG,
+  colors        = flag_colours,
+  customdata    = ~SAMPLE,
+  hovertemplate = "<b>%{customdata}</b><br>CHARR: %{x:.5f}<br>Inconsistent AB Het Rate: %{y:.5f}<extra></extra>",
+  marker        = list(size = 9, opacity = 0.85, line = list(width = 0)),
+  key           = ~SAMPLE
+) %>%
+  # empty highlight trace — always on top (added last)
+  add_trace(
+    type          = "scatter",
+    mode          = "markers",
+    x             = NULL,
+    y             = NULL,
+    customdata    = NULL,
+    hoverinfo     = "skip",
+    showlegend    = FALSE,
+    marker        = list(size = 15, color = "rgba(0,0,0,0)",
+                         line = list(color = "black", width = 2.5)),
+    inherit       = FALSE,
+    name          = "_highlight"
+  ) %>%
+  layout(
+    xaxis  = list(title = "CHARR"),
+    yaxis  = list(title = "Inconsistent AB Het Rate"),
+    legend = list(title = list(text = "Flag")),
+    shapes = list(
+      list(type = "line", x0 = 0.02, x1 = 0.02,
+           y0 = 0, y1 = 1, yref = "paper",
+           line = list(color = "#ff7f0e", dash = "dot", width = 1)),
+      list(type = "line", x0 = 0.03, x1 = 0.03,
+           y0 = 0, y1 = 1, yref = "paper",
+           line = list(color = "#d62728", dash = "dot", width = 1)),
+      list(type = "line", x0 = 0, x1 = 1, xref = "paper",
+           y0 = 0.10, y1 = 0.10,
+           line = list(color = "#ff7f0e", dash = "dot", width = 1)),
+      list(type = "line", x0 = 0, x1 = 1, xref = "paper",
+           y0 = 0.15, y1 = 0.15,
+           line = list(color = "#d62728", dash = "dot", width = 1))
+    ),
+    margin = list(t = 30)
+  ) %>%
+  partial_bundle()
+p
+```
+
+```{r table, echo=FALSE}
+dt <- datatable(
+  df %>% mutate(across(where(~ is.character(.) && n_distinct(.) <= 10), as.factor)),
+  escape = FALSE, selection = "single", rownames = FALSE,
+  filter = 'top', extensions = "Buttons",
+  options = list(
+    pageLength = 10, dom = 'Blfrtip', autoWidth = FALSE,
+    deferRender = TRUE, orderClasses = FALSE,
+    buttons = list(
+      list(extend = 'colvis', columns = 0:(ncol(df) - 1)),
+      list(extend = 'csv',   filename = params$prefix),
+      list(extend = 'excel', filename = params$prefix)
+    )
+  )
+)
+dt
+```
+
+<div class="ref-bar">
+  <span>Lu et al. (2023) <em>CHARR efficiently estimates contamination from DNA sequencing data.</em> AJHG 110:12.
+  <a href="https://doi.org/10.1016/j.ajhg.2023.10.011" target="_blank">doi:10.1016/j.ajhg.2023.10.011</a></span>
+  <a href="https://github.com/HTGenomeAnalysisUnit/SCE-VCF" target="_blank">SCE-VCF on GitHub</a>
+</div>
+
+```{js highlight_point, echo=FALSE}
+document.addEventListener('DOMContentLoaded', function() {
+  var attempts = 0;
+  var interval = setInterval(function() {
+    var plotEl = document.querySelector('.plotly.html-widget');
+    var tableEl = document.querySelector('table.dataTable');
+    if (plotEl && tableEl && window.Plotly) {
+      clearInterval(interval);
+      setupInteraction(plotEl, tableEl);
+    }
+    if (++attempts >= 100) clearInterval(interval);
+  }, 100);
+
+  function setupInteraction(plotEl, tableEl) {
+    var gd = document.getElementById(plotEl.id);
+
+    // Index of the dedicated highlight trace (last trace, named "_highlight")
+    function highlightTraceIdx() {
+      for (var i = gd.data.length - 1; i >= 0; i--) {
+        if (gd.data[i].name === '_highlight') return i;
+      }
+      return gd.data.length - 1;
+    }
+
+    $(tableEl).on('click', 'tbody tr', function() {
+      var dtApi = $(tableEl).DataTable();
+      var rowData = dtApi.row(this).data();
+      if (!rowData) return;
+
+      var sample = rowData[0]; // SAMPLE is first column
+
+      // Find x/y for the selected sample across all data traces
+      var hx = null, hy = null;
+      var hlIdx = highlightTraceIdx();
+      for (var t = 0; t < gd.data.length; t++) {
+        if (t === hlIdx) continue;
+        var keys = gd.data[t].key || [];
+        for (var i = 0; i < keys.length; i++) {
+          if (keys[i] === sample) {
+            hx = [gd.data[t].x[i]];
+            hy = [gd.data[t].y[i]];
+            break;
+          }
+        }
+        if (hx !== null) break;
+      }
+
+      Plotly.restyle(gd, { x: [hx], y: [hy] }, [hlIdx]);
+    });
+  }
+});
+```
+
+<style>
+body { font-family: 'Segoe UI', system-ui, sans-serif; padding-top: 0; margin: 0; }
+
+/* ── Page header ── */
+.report-header {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 8px 4px 6px;
+  border-bottom: 2px solid #49A942;
+  margin-bottom: 8px;
+}
+.report-header-title {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  letter-spacing: 0.01em;
+}
+.container, .main-container { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 4px 8px !important; }
+
+/* ── DataTable ── */
+table.dataTable tbody tr       { transition: background 0.12s; }
+table.dataTable tbody tr:hover td { background-color: #f0faf0 !important; }
+table.dataTable tbody tr.selected td { background-color: #dff0d8 !important; }
+table.dataTable thead th       { background-color: #f6f6f6; border-bottom: 2px solid #49A942 !important; }
+table.dataTable td, table.dataTable th {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+table.dataTable thead td {
+  overflow: visible;
+}
+
+/* ── ColVis / Buttons ── */
+.dt-buttons .dt-button {
+  background: #2372B9 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 5px 14px !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
+  transition: background 0.15s !important;
+}
+.dt-buttons .dt-button:hover { background: #1a5899 !important; }
+
+/* ── Reference bar ── */
+.ref-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #666;
+  border-top: 1px solid #e0e0e0;
+  margin-top: 18px;
+  padding-top: 8px;
+}
+.ref-bar a { color: #2372B9; text-decoration: none; white-space: nowrap; }
+.ref-bar a:hover { text-decoration: underline; }
+</style>

@@ -40,6 +40,7 @@ workflow CAVALIER {
     check
     versions
     somalier
+    sce
 
     main:
     /*
@@ -239,23 +240,36 @@ workflow CAVALIER {
         )
         .collectFile(sort:false, name: 'params.json')   
 
-    if (params.make_slides) {
-        VAR_BROWSER(
-            path("${projectDir}/bin/variant_browser.Rmd"),
-            path("${projectDir}/bin/datatable.Rmd"),
-            short_cand,
-            struc_cand,
-            PDF_SPLIT.out          .flatten().map{ it.name }.collectFile(newLine:true, sort:true, name: 'slides.txt'),
-            IGV_REPORT.out.combined.flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'igv_report.txt'),
-            SVPV.out               .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'svpv.txt'),
-            SAMPLOT.out            .flatMap{ it[1] }.map{ it.name }.collectFile(newLine:true, sort:true, name: 'samplot.txt'),
-            somalier,
-            params_channel,
-            versions,
-            gene_set
-        )
-    }
-
+    // only run VAR_BROWSER if at least one candidate set is non-empty
     
+
+        if (params.make_slides) {
+            
+            has_candidates = short_cand.mix(struc_cand).map{ true }.first()
+            
+            VAR_BROWSER(
+                has_candidates,
+                path("${projectDir}/bin/variant_browser.Rmd"),
+                path("${projectDir}/bin/datatable.Rmd"),
+                path("${projectDir}/bin/sce.Rmd"),
+                short_cand.ifEmpty([]),
+                struc_cand.ifEmpty([]),
+                PDF_SPLIT.out          .flatten().map{ it.name }.ifEmpty('').collectFile(newLine:true, sort:true, name: 'slides.txt'),
+                IGV_REPORT.out.combined.flatMap{ it[1] }.map{ it.name }.ifEmpty('').collectFile(newLine:true, sort:true, name: 'igv_report.txt'),
+                SVPV.out               .flatMap{ it[1] }.map{ it.name }.ifEmpty('').collectFile(newLine:true, sort:true, name: 'svpv.txt'),
+                SAMPLOT.out            .flatMap{ it[1] }.map{ it.name }.ifEmpty('').collectFile(newLine:true, sort:true, name: 'samplot.txt'),
+                somalier,
+                params_channel,
+                versions,
+                gene_set,
+                sce
+            )
+
+            has_candidates.ifEmpty(false).map { x ->
+                if (!x) {
+                    log.warn("No candidate variants - variant bowser creation skipped")
+                }
+            }
+        }
 
 }

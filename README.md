@@ -7,6 +7,25 @@ Nextflow pipeline for singleton and family based candidate variant reporting bas
 * Variants are filtered by family based on inheritance, population frequency, predicted impact and gene lists
 * Candidate variants are reported along with IGV and Structural variant visualisations
 
+```mermaid
+graph LR
+    inputs["<b>Inputs</b>\nVCFs, Pedigree,\nGene Lists, BAMs"] --> qc["<b>QC</b>\nRelatedness, ancestry\n& contamination"]
+    inputs --> short["<b>Annotate Short Variants</b>\ngnomAD, CADD, ClinVar\nVEP, SpliceAI, REVEL,\nAlphaMissense"]
+    inputs --> struc["<b>Annotate Structural Variants</b>\ngnomAD SV, VEP"]
+
+    short --> filter["<b>Filter</b>\nFrequency, inheritance,\nimpact & gene list"]
+    struc --> filter
+    filter --> vis["<b>Visualise</b>\nIGV, SVPV & Samplot"]
+    vis --> report["<b>Report</b>\nPer-family slide decks,\ninteractive variant browser"]
+    qc --> report
+
+    report --> outputs["<b>Outputs</b>\nCandidate CSVs,\nPer-family Slides,\nHTML variant browser"]
+
+    classDef default fill:#f3e5f5,stroke:#7b1fa2,color:#000
+    classDef io fill:#e1f5fe,stroke:#0288d1,color:#000
+    class inputs,outputs io
+```
+
 ## Installation
 * Clone this repository
 
@@ -32,7 +51,7 @@ The following parameters may be set in the Nextflow configuration file:
 |-----------|---------|-------------|
 | `alignments` | - | TSV file with alignment file paths (Col 1: sample ID, Col 2: BAM or CRAM path) |
 | `lists` | - | Gene lists, comma separated (TSV or ID) - [see below](#gene-lists) |
-| `ped` | - | Pedigree file (required for familial analysis, leave blank for singletons) |
+| `ped` | - | Pedigree file (required for familial analysis, leave blank for singletons) [see below](#pedigree) |
 | `short_vcf` | - | Input VCF for short variants (SNVs/Indels) |
 | `struc_vcf` | - | Input VCF for structural variants |
 | `ref_fasta` | - | GRCh38 reference FASTA file |
@@ -112,8 +131,8 @@ The following parameters may be set in the Nextflow configuration file:
 ### Gene Lists
 * Gene lists are passed as a comma separated set of gene lists to use for filtering. This may be a local TSV file, e.g. 'my_gene_list.tsv' or a web based gene list, e.g. [PAA:289](https://panelapp.agha.umccr.org/panels/289/).
     * **Local TSV file**  
-      * Path to a TSV file with mandatory named column. The file should have at least one of the following column names:
-     `ensembl_gene_id`, `hgnc_id`, `entrez_id` or `symbol`. Optional column names are `list_id`, `list_name`, `list_version` and `inheritance`. Note that all gene IDs are converted to Ensembl Gene IDs using HGNC to match VEP annotation.
+      * Path to a gene list TSV file. The file should have at least one of the following column names:
+     `ensembl_gene_id`, `hgnc_id`, `entrez_id` or `symbol`. Optional column names are `list_id`, `list_name`, `list_version` and `inheritance`. Note that all gene IDs are converted to Ensembl Gene IDs using HGNC to match the VEP annotation.
      
          e.g.
 
@@ -134,9 +153,12 @@ The following parameters may be set in the Nextflow configuration file:
     * **Web List** - Cavalier will automatically retrieve the latest version of these web lists
       * **PanelApp**: PanelApp Australia or PanelApp Genomics England lists may be specified with "PAA:" or "PAE:" prefix respectively. e.g. [PAA:202](https://panelapp-aus.org/panels/202/)
       * **HPO**: Human phenotype ontology terms may be specified with the "HP:" prefex, e.g. [HP:0001250](https://hpo.jax.org/browse/term/HP:0001250)
-      * **Genes4Epilepsy**: [Genes4Epilepsy](https://github.com/bahlolab/Genes4Epilepsy) lists may be specified with the "G4E:" prexif, e.g. "G4E:All" for All Epilepsy genes, or "G4E:Focal" for Focal epilepsy genes only
+      * **Genes4Epilepsy**: [Genes4Epilepsy](https://github.com/bahlolab/Genes4Epilepsy) lists may be specified with the "G4E:" prexif, e.g. "G4E:ALL" for All Epilepsy genes, or "G4E:Focal" for Focal epilepsy genes only (options: "ALL", "Focal", "MCD", "DEE", "PME", "GGE").
       * **HGNC**: Gene subsets by locus group can be extracted from HGNC, for example "HGNC:protein-coding" will give a list of all protein coding genes
     * **Genomic Region** - by specifying a genomic region such as "chr1:1000000-2000000", cavalier will extract all ensemble/gencode genes in that region.
+
+### Pedigree
+* The pedigree file must contain rows for all labelled family members to draw pedigree. When provided, only variants that segregate perfectly with phenotype will be reported. Format is a TSV file with 6 columns: **Family ID**, **Individual ID**, **Paternal ID**, **Maternal ID**, **Sex** (male: 1, female: 2), **Phenotype** (unaffected: 1, affected: 2). Column names should not be included.
 
 ### Slide Info
 * Output slides contain a table reporting variant and gene level information
