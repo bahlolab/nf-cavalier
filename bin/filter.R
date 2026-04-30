@@ -739,10 +739,15 @@ FILTER_COMPOUND <- function(SHORT_VAR = NULL, STRUC_VAR = NULL) {
         inheritance != 'compound' | 
           Gene %in% GENES | 
           str_detect(CLNSIG, FILTER_SHORT_CLINVAR_KEEP_PAT)
-      )  %>% 
+      ) %>% 
       mutate(inheritance = if_else(
         inheritance == 'dominant' & Gene %in% GENES,
         'dominant/compound',
+        inheritance
+      )) %>% 
+      mutate(inheritance = if_else(
+        inheritance == 'compound' & (!Gene %in% GENES) & str_detect(CLNSIG, FILTER_SHORT_CLINVAR_KEEP_PAT),
+        'dominant',
         inheritance
       ))
 

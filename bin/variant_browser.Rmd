@@ -76,15 +76,84 @@ cat(sprintf('<script>var _reportTime = "%s";</script>\n', format(Sys.time(), "%Y
     <button class="tab-btn"        data-tab="vtab-metadata">Metadata</button>
     <div id="app-logo-wrap"><img src="data:image/png;base64,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" id="app-logo" alt="WEHI logo" height="40"></div>
   </div>
+  <div id="api-health-bar" style="display:none;background:#fff3cd;border-bottom:1px solid #ffc107;padding:5px 14px;font-size:12px;color:#856404;align-items:center;gap:8px">
+    <span style="font-weight:600">&#9888; API unavailable:</span>
+    <span id="api-health-list"></span>
+    <button onclick="_runApiSmokeTests(true)" style="background:none;border:1px solid #9d6c06;border-radius:3px;cursor:pointer;font-size:11px;color:#856404;padding:1px 7px;line-height:1.4" title="Retry">&#x21BB; Retry</button>
+    <button onclick="document.getElementById('api-health-bar').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:#856404;padding:0 4px;line-height:1" title="Dismiss">&times;</button>
+  </div>
   <div id="tab-vtab-short" class="tab-panel active" style="padding:12px;">
 ```
 
 ```{r load_short, include=FALSE, eval=has_short}
+col_spec <- cols(
+  LINE_ID = col_integer(),
+  CHROM = col_character(),
+  POS = col_integer(),
+  REF = col_character(),
+  ALT = col_character(),
+  AC = col_integer(),
+  AF = col_double(),
+  AN = col_integer(),
+  CADD = col_double(),
+  gnomad_AC = col_integer(),
+  gnomad_AF = col_double(),
+  gnomad_FAF95 = col_double(),
+  gnomad_nhomalt = col_integer(),
+  phyloP100 = col_double(),
+  SYMBOL = col_character(),
+  Gene = col_character(),
+  VARIANT_CLASS = col_character(),
+  Consequence = col_character(),
+  IMPACT = col_character(),
+  Feature_type = col_character(),
+  Feature = col_character(),
+  BIOTYPE = col_character(),
+  EXON = col_character(),
+  INTRON = col_character(),
+  HGVSc = col_character(),
+  HGVSp = col_character(),
+  HGVSg = col_character(),
+  Amino_acids = col_character(),
+  HGNC_ID = col_character(),
+  MANE = col_logical(),
+  MANE_SELECT = col_logical(),
+  MANE_PLUS_CLINICAL = col_logical(),
+  CCDS = col_logical(),
+  ENSP = col_character(),
+  SIFT = col_character(),
+  PolyPhen = col_character(),
+  CLNSIG = col_character(),
+  CLNGENE = col_character(),
+  CLNVID = col_integer(),
+  Existing_variation = col_character(),
+  am_class = col_character(),
+  am_pathogenicity = col_double(),
+  promoterAI_gene = col_character(),
+  promoterAI = col_character(),
+  REVEL = col_double(),
+  SpliceAI_pred_DP_AG = col_integer(),
+  SpliceAI_pred_DP_AL = col_integer(),
+  SpliceAI_pred_DP_DG = col_integer(),
+  SpliceAI_pred_DP_DL = col_integer(),
+  SpliceAI_pred_DS_AG = col_double(),
+  SpliceAI_pred_DS_AL = col_double(),
+  SpliceAI_pred_DS_DG = col_double(),
+  SpliceAI_pred_DS_DL = col_double(),
+  SpliceAI_pred_SYMBOL = col_character(),
+  `_5UTR_annotation` = col_character(),
+  `_5UTR_consequence` = col_character(),
+  Existing_InFrame_oORFs = col_integer(),
+  Existing_OutOfFrame_oORFs = col_integer(),
+  Existing_uORFs = col_integer(),
+  .default = col_character()
+)
+
 default_cols <-
   c('family_id', 'SYMBOL', 'inheritance', 'variant_id', 'Consequence', 'IMPACT', 'CLNSIG', 'gnomad_AF', 'CADD')
 
 variants <-
-  read_csv("short_candidates.csv") %>%
+  read_csv("short_candidates.csv", col_types = col_spec) %>%
   mutate(
     gnomad_AF = replace_na(gnomad_AF, 0),
     gnomad_AC = replace_na(gnomad_AC, 0),
@@ -195,11 +264,55 @@ datatable(
 ```
 
 ```{r load_struc, include=FALSE, eval=has_struc}
+col_spec <- cols(
+  LINE_ID = col_integer(),
+  CHROM = col_character(),
+  POS = col_double(),
+  REF = col_character(),
+  ALT = col_character(),
+  AC = col_integer(),
+  AF = col_double(),
+  AN = col_integer(),
+  SVTYPE = col_character(),
+  SVLEN = col_integer(),
+  END = col_integer(),
+  Max_AF = col_double(),
+  Max_Het = col_double(),
+  Max_HomAlt = col_integer(),
+  Max_PopMax_AF = col_double(),
+  ThousG_Count = col_integer(),
+  gnomAD_Count = col_integer(),
+  CCDG_Count = col_integer(),
+  TOPMed_Count = col_integer(),
+  SYMBOL = col_character(),
+  Gene = col_character(),
+  VARIANT_CLASS = col_character(),
+  Consequence = col_character(),
+  IMPACT = col_character(),
+  Feature_type = col_character(),
+  Feature = col_character(),
+  BIOTYPE = col_character(),
+  EXON = col_character(),
+  INTRON = col_character(),
+  HGVSc = col_logical(),
+  HGVSp = col_logical(),
+  HGVSg = col_logical(),
+  Amino_acids = col_logical(),
+  HGNC_ID = col_character(),
+  MANE = col_logical(),
+  MANE_SELECT = col_logical(),
+  MANE_PLUS_CLINICAL = col_logical(),
+  CCDS = col_logical(),
+  ENSP = col_character(),
+  Existing_variation = col_logical(),
+  .default = col_character()
+)
+
 default_cols_struc <-
   c('family_id', 'SYMBOL', 'inheritance', 'SVTYPE','CHROM', 'POS', 'END', 'SVLEN', 'Consequence', 'IMPACT', 'Max_AF')
 
 struc_variants <-
-  read_csv("struc_candidates.csv") %>%
+  read_csv("struc_candidates.csv", col_types = col_spec) %>%
   select(all_of(default_cols_struc), everything()) %>%
   left_join(
     read_tsv('slides.txt', col_names = 'pdf') %>% 
@@ -405,12 +518,9 @@ datatable(gene_set, escape=FALSE, selection="none", rownames=FALSE, filter='top'
             <span class="info-placeholder">Select a variant to load gnomAD data.</span>
           </div>
         </details>
-        <details class="info-section">
-          <summary class="info-section-title">All of Us<span id="aou-summary" class="section-summary"></span></summary>
-          <div id="aou-content" class="hgnc-data">
-            <span class="info-placeholder">Select a variant to load All of Us data.</span>
-          </div>
-        </details>
+        <div class="info-section">
+          <div class="info-section-title info-section-title--static" style="cursor:default">All of Us<span id="aou-content" style="font-weight:400;font-size:13px"></span></div>
+        </div>
       </div>
       <p class="citation">
         <a href="https://doi.org/10.1093/nar/gkx1153" target="_blank">Landrum et al. (2018) ClinVar. Nucleic Acids Research. doi:10.1093/nar/gkx1153</a><br>
@@ -924,6 +1034,81 @@ function loadSpliceAI(url) {
 
 // Both panels start visible so DataTables can measure column widths during init.
 // After DT's $(document).ready() has run, hide the struc panel.
+// ── API smoke tests ───────────────────────────────────────────────────────
+
+var _apiProbes = [
+  { name: 'HGNC',
+    url:  'https://rest.genenames.org/fetch/ensembl_gene_id/ENSG00000141510',
+    opts: { headers: { 'Accept': 'application/json' } } },
+  { name: 'NCBI Gene',
+    url:  'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=gene&id=7157&retmode=json',
+    opts: null },
+  { name: 'ClinVar',
+    url:  'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&term=150498222%5Bchrpos%5D+AND+g.150498222A%3EG+AND+1%5Bchr%5D&retmode=json',
+    opts: null },
+  { name: 'PubMed',
+    url:  'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=30046113&retmode=json',
+    opts: null },
+  { name: 'gnomAD',
+    url:  'https://gnomad.broadinstitute.org/api',
+    opts: { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: '{ variant(variantId:"2-55647430-C-A",dataset:gnomad_r4){variant_id} }' }) } },
+  { name: 'PanelApp AUS',
+    url:  'https://panelapp-aus.org/api/v1/genes/?entity_name=TP53',
+    opts: null },
+  { name: 'PanelApp GEL',
+    url:  'https://panelapp.genomicsengland.co.uk/api/v1/genes/?entity_name=TP53',
+    opts: null },
+  { name: 'HPO',
+    url:  'https://ontology.jax.org/api/network/annotation/NCBIGene:7157',
+    opts: null },
+];
+
+async function _checkApi(probe) {
+  var ac    = new AbortController();
+  var timer = setTimeout(function() { ac.abort(); }, 8000);
+  try {
+    var r = await fetch(probe.url, Object.assign({}, probe.opts, { signal: ac.signal }));
+    return r.ok ? null : { name: probe.name, url: probe.url };
+  } catch(e) {
+    return { name: probe.name, url: probe.url };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function _copyApiUrl(el) {
+  var url = el.dataset.url;
+  navigator.clipboard.writeText(url).then(function() {
+    var prev = el.textContent;
+    el.textContent = 'copied!';
+    setTimeout(function() { el.textContent = prev; }, 1200);
+  }).catch(function() {});
+}
+
+function _renderApiResults(failed) {
+  var bar  = document.getElementById('api-health-bar');
+  var list = document.getElementById('api-health-list');
+  if (!failed.length) { bar.style.display = 'none'; return; }
+  list.innerHTML = failed.map(function(f) {
+    return '<span onclick="_copyApiUrl(this)" data-url="' + esc(f.url) + '" title="' + esc(f.url) + '&#10;(click to copy)" ' +
+      'style="display:inline-block;padding:1px 7px;border-radius:3px;font-size:11px;font-weight:600;color:#fff;background:#9d6c06;cursor:pointer">' +
+      esc(f.name) + '</span>';
+  }).join(' ');
+  bar.style.display = 'flex';
+}
+
+function _runApiSmokeTests(isRetry) {
+  if (isRetry) {
+    var list = document.getElementById('api-health-list');
+    list.innerHTML = '<em>Checking\u2026</em>';
+    document.getElementById('api-health-bar').style.display = 'flex';
+  }
+  Promise.all(_apiProbes.map(_checkApi)).then(function(results) {
+    _renderApiResults(results.filter(Boolean));
+  });
+}
+
 $(document).ready(function() {
   document.querySelectorAll('details.info-section').forEach(function(el) {
     el.addEventListener('toggle', function() {
@@ -956,6 +1141,7 @@ $(document).ready(function() {
     URL.revokeObjectURL(a.href);
   });
   document.body.style.opacity = '1';
+  _runApiSmokeTests();
 });
 
 var _sharedTabs = { 'slides': true, 'gene-info': true, 'panelapp': true, 'hpo': true };
@@ -1060,7 +1246,7 @@ document.addEventListener('click', function(e) {
   if (tab === 'databases') {
     if (p.clinvar) { loadClinvar(p.clinvar); p.clinvar = null; }
     if (p.gnomad)  { loadGnomad(p.gnomad);   p.gnomad  = null; }
-    if (p.aou)     { loadAou(p.aou);         p.aou     = null; }
+    // if (p.aou)     { loadAou(p.aou);         p.aou     = null; } // AOU API restricted
   }
 });
 
@@ -1072,13 +1258,14 @@ function ucscWithPix(url, iframeEl) {
 var _phHtml = '<span class="info-placeholder">Select a variant to load gene information.</span>';
 
 function clearSharedTabs() {
-  ['hgnc-data', 'gene-summary', 'panelapp-aus', 'panelapp-gel', 'hpo-diseases', 'hpo-phenotypes', 'clinvar-content', 'gnomad-content', 'aou-content']
+  ['hgnc-data', 'gene-summary', 'panelapp-aus', 'panelapp-gel', 'hpo-diseases', 'hpo-phenotypes', 'clinvar-content', 'gnomad-content']
     .forEach(function(id) { document.getElementById(id).innerHTML = _phHtml; });
-  ['clinvar-summary', 'gnomad-summary', 'aou-summary']
+  document.getElementById('aou-content').innerHTML = '';
+  ['clinvar-summary', 'gnomad-summary' /*, 'aou-summary' */] // AOU API restricted
     .forEach(function(id) { document.getElementById(id).textContent = ''; });
   clearTimeout(_pdfTimeout);
   document.getElementById('viewer-pdf').src = '';
-  _pending.geneInfo = _pending.panelApp = _pending.hpo = _pending.clinvar = _pending.gnomad = _pending.aou = null;
+  _pending.geneInfo = _pending.panelApp = _pending.hpo = _pending.clinvar = _pending.gnomad = /* _pending.aou = */ null; // AOU API restricted
 }
 
 function reloadSharedTabs(state) {
@@ -1090,7 +1277,7 @@ function reloadSharedTabs(state) {
   _pending.hpo      = state.ensemblGeneId;
   _pending.clinvar  = state.clinvarInfo || null;
   _pending.gnomad   = state.aouId      || null;
-  _pending.aou      = state.aouId      || null;
+  // _pending.aou   = state.aouId      || null; // AOU API restricted
   // If a non-slides shared tab is visible, reload it immediately (hits cache)
   var sp = document.getElementById('shared-panels');
   if (sp.style.display !== 'none') {
@@ -1462,13 +1649,15 @@ async function loadClinvar(info) {
   cvSum(sig ? pill(esc(sig), sigBadgeColor(sig)) : '');
 }
 
-async function fetchAou(variantId) {
-  return cachedFetch(
-    'https://public.api.researchallofus.org/v1/genomics/variant-details/' + encodeURIComponent(variantId),
-    null, 'AllOfUs',
-    function(json) { return json.statusCode ? null : json; }
-  );
-}
+// AOU API restricted — fetch disabled
+// async function fetchAou(variantId) {
+//   return cachedFetch(
+//     'https://public.api.researchallofus.org/v1/genomics/variant-details/' + encodeURIComponent(variantId),
+//     { headers: { 'Referer': 'https://databrowser.researchallofus.org/' } },
+//     'AllOfUs',
+//     function(json) { return json.statusCode ? null : json; }
+//   );
+// }
 
 // ── Shared frequency table ────────────────────────────────────────────────
 // Normalised row: { label, ac, an, af, hom }  (af may be null for AoU)
@@ -1581,46 +1770,56 @@ function loadGnomad(variantId) {
 }
 
 // ── All of Us ─────────────────────────────────────────────────────────────
+// AOU public API restricted — fetch/transform disabled, panel shows link only
 
-var _aouPopKeys = [
-  { key: 'afr', label: 'African'        },
-  { key: 'eas', label: 'East Asian'     },
-  { key: 'eur', label: 'European'       },
-  { key: 'amr', label: 'Americas'       },
-  { key: 'mid', label: 'Middle Eastern' },
-  { key: 'sas', label: 'South Asian'    },
-  { key: 'oth', label: 'Remaining'      },
-];
+// var _aouPopKeys = [
+//   { key: 'afr', label: 'African'        },
+//   { key: 'eas', label: 'East Asian'     },
+//   { key: 'eur', label: 'European'       },
+//   { key: 'amr', label: 'Americas'       },
+//   { key: 'mid', label: 'Middle Eastern' },
+//   { key: 'sas', label: 'South Asian'    },
+//   { key: 'oth', label: 'Remaining'      },
+// ];
 
-function _transformAou(data, variantId) {
-  var rows = _aouPopKeys.map(function(pop) {
-    return { label: pop.label,
-      ac:  data[pop.key + 'AlleleCount'],
-      an:  data[pop.key + 'AlleleNumber'],
-      af:  data[pop.key + 'AlleleFrequency'],
-      hom: data[pop.key + 'HomozygoteCount'] };
-  });
-  rows.sort(function(a, b) { return a.label.localeCompare(b.label); });
-  var browserUrl = 'https://databrowser.researchallofus.org/snvsindels/' + encodeURIComponent(variantId);
-  return {
-    rows: rows,
-    total: { ac: data.totalAlleleCount, an: data.totalAlleleNumber,
-             af: data.totalAlleleFrequency, hom: data.totalHomozygoteCount },
-    linkHtml: '<a href="' + esc(browserUrl) + '" target="_blank">' + esc(variantId) + ' on All of Us Data Browser ' + _extLink + '</a>'
-  };
-}
+// function _transformAou(data, variantId) {
+//   var rows = _aouPopKeys.map(function(pop) {
+//     return { label: pop.label,
+//       ac:  data[pop.key + 'AlleleCount'],
+//       an:  data[pop.key + 'AlleleNumber'],
+//       af:  data[pop.key + 'AlleleFrequency'],
+//       hom: data[pop.key + 'HomozygoteCount'] };
+//   });
+//   rows.sort(function(a, b) { return a.label.localeCompare(b.label); });
+//   var browserUrl = 'https://databrowser.researchallofus.org/snvsindels/' + encodeURIComponent(variantId);
+//   return {
+//     rows: rows,
+//     total: { ac: data.totalAlleleCount, an: data.totalAlleleNumber,
+//              af: data.totalAlleleFrequency, hom: data.totalHomozygoteCount },
+//     linkHtml: '<a href="' + esc(browserUrl) + '" target="_blank">' + esc(variantId) + ' on All of Us Data Browser ' + _extLink + '</a>'
+//   };
+// }
+
+// function loadAou(variantId) {
+//   return loadFreqPanel({ elId: 'aou-content', sumElId: 'aou-summary',
+//     noDataMsg: 'No All of Us data for this variant.', notFoundMsg: 'No All of Us record found.',
+//     variantId: variantId, fetch: fetchAou, transform: _transformAou });
+// }
 
 function loadAou(variantId) {
-  return loadFreqPanel({ elId: 'aou-content', sumElId: 'aou-summary',
-    noDataMsg: 'No All of Us data for this variant.', notFoundMsg: 'No All of Us record found.',
-    variantId: variantId, fetch: fetchAou, transform: _transformAou });
+  var el = document.getElementById('aou-content');
+  if (!el) return;
+  if (!variantId || variantId === 'NA') { el.innerHTML = ''; return; }
+  var browserUrl = 'https://databrowser.researchallofus.org/snvsindels/' + encodeURIComponent(variantId);
+  el.innerHTML = ' \u2014 <a href="' + esc(browserUrl) + '" target="_blank">' +
+    esc(variantId) + ' ' + _extLink + '</a>';
 }
 
 function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl, ensemblGeneId, symbol, clnvid, chrom, pos, hgvsg, familyId, variantId) {
   var clinvarInfo = { clnvid: clnvid || null, chrom: String(chrom || ''), pos: String(pos || ''), hgvsg: String(hgvsg || '') };
   var aouId = variantId ? String(variantId).replace(/^chr/i, '') : null;
   _shortState = { pdfUrl: pdfUrl, ensemblGeneId: ensemblGeneId, symbol: symbol, clinvarInfo: clinvarInfo, aouId: aouId };
-  ['clinvar-summary', 'gnomad-summary', 'aou-summary']
+  ['clinvar-summary', 'gnomad-summary' /*, 'aou-summary' */] // AOU API restricted
     .forEach(function(id) { document.getElementById(id).textContent = ''; });
   updateSlideDownloads(familyId);
   clearTimeout(_pdfTimeout);
@@ -1635,7 +1834,8 @@ function loadSample(pdfUrl, htmlUrl, rowId, spliceaiUrl, ucscUrl, ucscRenderUrl,
   setOrLoad(activeTab, 'ucsc-short',     'ucscShort', ucscVal, function(v) { loadUcsc('viewer-ucsc-short', 'ucsc-link-short', v); });
   setOrLoad(activeTab, 'databases',      'clinvar',   clinvarInfo, loadClinvar);
   setOrLoad(activeTab, 'databases',      'gnomad',    aouId,       loadGnomad);
-  setOrLoad(activeTab, 'databases',      'aou',       aouId,       loadAou);
+  // setOrLoad(activeTab, 'databases',   'aou',       aouId,       loadAou); // AOU API restricted
+  loadAou(aouId);
   setOrLoad(activeTab, 'gene-info',      'geneInfo',  ensemblGeneId, loadGeneInfo);
   setOrLoad(activeTab, 'panelapp',       'panelApp',  paVal, function(v) { loadPanelApp(v.symbol, v.geneId); });
   setOrLoad(activeTab, 'hpo',            'hpo',       ensemblGeneId, loadHpo);

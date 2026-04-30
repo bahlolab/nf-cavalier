@@ -9,6 +9,7 @@ process VAR_BROWSER {
 
 
     input:
+    val gate
     path browser_rmd
     path table_rmd
     path sce_rmd
