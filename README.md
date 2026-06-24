@@ -35,7 +35,7 @@ graph LR
 
 ## Usage
 1. Create and navigate to run working directory
-2. Download required annotation sources - see [annotations](#annotations)
+2. Set up reference data — either run the included [setup workflow](#setup-workflow) or download manually (see [annotations](#annotations))
 3. Create a configuration file named `nextflow.config` in the run directory - see [parameters](#parameters) for all options. Minimal example:
     ```nextflow
     params {
@@ -46,25 +46,6 @@ graph LR
         struc_vcf  = 'cohort.sv.vcf.gz'
         lists      = 'PAA:202,my_genes.tsv'
 
-        // Reference
-        ref_fasta = '/path/to/GRCh38.fasta'
-        ref_gene  = '/path/to/ncbiRefSeqSelect.tsv'
-
-        // VEP
-        vep_cache          = '/path/to/vep_cache'
-        vep_cache_ver      = '115'
-        vep_spliceai_snv   = '/path/to/spliceai_scores.masked.snv.hg38.vcf.gz'
-        vep_spliceai_indel = '/path/to/spliceai_scores.masked.indel.hg38.vcf.gz'
-        vep_alphamissense  = '/path/to/AlphaMissense_hg38.tsv.gz'
-        vep_revel          = '/path/to/new_tabbed_revel_grch38.tsv.gz'
-        vep_utr_annotator  = '/path/to/uORF_5UTR_GRCh38_PUBLIC.txt'
-
-        // Annotation databases - see Annotations section
-        vcfanno_gnomad     = '/path/to/gnomad.joint.v4.1.vcf.gz'
-        vcfanno_cadd_snv   = '/path/to/whole_genome_SNVs.tsv.gz'
-        vcfanno_cadd_indel = '/path/to/gnomad.genomes.r4.0.indel.tsv.gz'
-        vcfanno_clinvar    = '/path/to/clinvar.vcf.gz'
-        svafdb             = '/path/to/SVAFotate_core_SV_popAFs.GRCh38.v4.1.bed.gz'
     }
     ```
 4. Run nf-cavalier  
@@ -77,7 +58,32 @@ graph LR
     ```
     nextflow run /PATH/TO/nf-cavalier -resume -profile bahlolab
     ```
-  
+
+## Setup Workflow
+A separate workflow under [`setup_refs/`](setup_refs/) automates retrieval and preprocessing of (almost) all required reference annotation data for GRCh38, and writes a populated `nextflow.config` ready for the main pipeline.
+
+Basic invocation:
+```
+nextflow run /PATH/TO/nf-cavalier/setup_refs/setup_refs.nf \
+    --resource_dir ./cavalier_refdata \
+    --config_out   ./nextflow.config
+```
+* `--resource_dir` — where all downloaded reference data will be stored (default `./cavalier_refdata`). Files are kept via `storeDir` so reruns short-circuit completed downloads.
+* `--config_out` — path the generated `nextflow.config` will be written to. The workflow **fails if this file already exists** to avoid overwriting an existing config.
+
+Each asset can be opted-out with the corresponding `--skip_<asset>` flag. Skipped assets are commented out in the generated config; wire those paths in manually. Download URLs are all parameters with defaults (`--url_<asset>`) — override if an upstream URL changes.
+
+Skip flags: `skip_ref_fasta`, `skip_vep_cache`, `skip_alphamissense`, `skip_revel`, `skip_utr_annotator`, `skip_gnomad`, `skip_cadd`, `skip_clinvar`, `skip_svafotate`, `skip_ref_gene`, `skip_somalier`.
+
+### SpliceAI (manual)
+SpliceAI raw score files are distributed only via Illumina BaseSpace and require a free Illumina account. They are **not** auto-downloaded by this workflow — `vep_spliceai_snv` and `vep_spliceai_indel` are always emitted as commented-out placeholders in the generated config; fill them in manually after downloading.
+
+To obtain the files: sign in at https://basespace.illumina.com, open https://basespace.illumina.com/s/otSPW8hnhaZR, accept the non-commercial license, and download from `genome_scores_v1.3`:
+* `spliceai_scores.raw.snv.hg38.vcf.gz`
+* `spliceai_scores.raw.indel.hg38.vcf.gz`
+
+Generate tabix indexes locally (`tabix -p vcf <file.vcf.gz>` for each), then point the two `vep_spliceai_*` params at the resulting paths.
+
 ## Parameters
 The following parameters may be set in the Nextflow configuration file:
 ### Required

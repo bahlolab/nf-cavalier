@@ -415,12 +415,6 @@
                     "description": "SVAFotate database path for gnomAD v4.1 SV population frequencies.",
                     "format": "file-path"
                 },
-                "pop_sv": {
-                    "type": "string",
-                    "default": "annotation/gnomAD/gnomad.v4.1.sv.sites.clean.vcf.gz",
-                    "description": "gnomAD v4.1 SV sites VCF file.",
-                    "format": "file-path"
-                },
                 "ref_gene": {
                     "type": "string",
                     "default": "annotation/misc/ncbiRefSeqSelect.2026-01.tsv",

@@ -318,14 +318,14 @@ struc_variants <-
     read_tsv('slides.txt', col_names = 'pdf') %>% 
       tidyr::extract(
         pdf,
-        into = c("family_id", "variant_id"),
-        regex = "^([^\\.]+).+\\.([^\\.]+)\\.pdf",
+        into = c("family_id", 'SYMBOL', "variant_id"),
+        regex = "^([^\\.]+)\\.__([^\\.]+)__\\.([^\\.]+)\\.pdf",
         remove = FALSE
       ) %>% 
       mutate(
         pdf = file.path('by_family', family_id, 'varslides', pdf)
       ),
-    by = join_by(family_id, variant_id)
+    by = join_by(family_id, SYMBOL, variant_id)
   ) %>% 
   left_join(
     read_tsv('svpv.txt', col_names = 'svpv') %>% 
