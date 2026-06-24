@@ -24,7 +24,7 @@ include { CLINVAR                  } from '../modules/clinvar'
 include { REF_GENE                 } from '../modules/ref_gene'
 include { REVEL                    } from '../modules/revel'
 
-workflow SETUP_REFS {
+workflow SETUP_ANNO {
 
     // Per-asset channels emit [asset_name, primary_file] for downloaded assets.
     // Skipped assets contribute nothing; the config writer detects them via params.skip_*.
@@ -58,7 +58,7 @@ workflow SETUP_REFS {
 
     if (!params.skip_revel) {
         if (!params.url_revel) {
-            log.warn "[setup_refs] url_revel is null — REVEL will be omitted from generated config."
+            log.warn "[setup_anno] url_revel is null — REVEL will be omitted from generated config."
         } else {
             ch_assets = ch_assets.mix(
                 REVEL(params.url_revel).map { tsv, _tbi -> tuple('revel', tsv) }
