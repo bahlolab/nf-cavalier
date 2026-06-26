@@ -39,25 +39,25 @@
                 "short_vcf": {
                     "type": "string",
                     "fa_icon": "fas fa-database",
-                    "description": "Input VCF for short variants (SNVs/Indels).",
+                    "description": "Input VCF for short variants (SNVs/Indels). Accepts bgzipped VCF (.vcf.gz) or BCF (.bcf), with a .tbi or .csi index alongside.",
                     "format": "file-path"
                 },
                 "struc_vcf": {
                     "type": "string",
                     "fa_icon": "fas fa-database",
-                    "description": "Input VCF for structural variants.",
+                    "description": "Input VCF for structural variants. Accepts bgzipped VCF (.vcf.gz) or BCF (.bcf), with a .tbi or .csi index alongside.",
                     "format": "file-path"
                 },
                 "short_vcf_annotated": {
                     "type": "string",
                     "fa_icon": "fas fa-database",
-                    "description": "Pre-annotated short variant VCF (skips annotation step).",
+                    "description": "Pre-annotated short variant VCF (skips annotation step). Accepts bgzipped VCF (.vcf.gz) or BCF (.bcf), with a .tbi or .csi index alongside.",
                     "format": "file-path"
                 },
                 "struc_vcf_annotated": {
                     "type": "string",
                     "fa_icon": "fas fa-database",
-                    "description": "Pre-annotated structural variant VCF (skips annotation step).",
+                    "description": "Pre-annotated structural variant VCF (skips annotation step). Accepts bgzipped VCF (.vcf.gz) or BCF (.bcf), with a .tbi or .csi index alongside.",
                     "format": "file-path"
                 }
             }

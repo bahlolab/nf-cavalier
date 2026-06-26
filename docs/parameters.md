@@ -11,7 +11,7 @@ The following parameters may be set in the Nextflow configuration file.
 |-----------|---------|-------------|
 | `alignments` | - | TSV file with alignment file paths (Col 1: sample ID, Col 2: BAM or CRAM path) |
 | `lists` | - | Gene lists, comma separated (TSV or ID) — see [usage.md#gene-lists](usage.md#gene-lists) |
-| `short_vcf` *or* `struc_vcf` | - | Input VCF(s) for short variants (SNVs/Indels) and/or structural variants — at least one is required |
+| `short_vcf` *or* `struc_vcf` | - | Input VCF(s) for short variants (SNVs/Indels) and/or structural variants — at least one is required. Accepts `.vcf.gz` or `.bcf`, indexed with `.tbi` or `.csi` |
 | `ped` | - | Pedigree file — required for familial analysis; omit for singletons — see [usage.md#pedigree](usage.md#pedigree) |
 
 </details>

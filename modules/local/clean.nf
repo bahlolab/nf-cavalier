@@ -22,7 +22,7 @@ process CLEAN {
     tuple val(i), path(output), path("${output}.tbi")
 
     script:
-    output = vcf.name.replace('.vcf.gz', '.clean.vcf.gz')
+    output = vcf.name.replaceAll(/\.(vcf\.gz|vcf\.bgz|bcf)$/, '.clean.vcf.gz')
     // decrease VCF size by dropping unused fields
     remove = 'QUAL,FILTER' +
         (params.short_info    ? ',^' + params.short_info  .collect{ "INF/$it" }.join(',') : '') +
@@ -58,7 +58,7 @@ process CLEAN_STRUC {
     tuple val(i), path(output), path("${output}.tbi")
 
     script:
-    output = vcf.name.replace('.vcf.gz', '.clean.vcf.gz')
+    output = vcf.name.replaceAll(/\.(vcf\.gz|vcf\.bgz|bcf)$/, '.clean.vcf.gz')
     // decrease VCF size by dropping unused fields
     remove = 'QUAL,FILTER' +
         (params.struc_info    ? ',^' + params.struc_info  .collect{ "INF/$it" }.join(',') : '') +

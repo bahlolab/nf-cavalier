@@ -43,7 +43,7 @@ An end-to-end example built from the public **1000G CEPH trio** (chr22) is provi
 
 The pipeline takes four kinds of input:
 
-- **Variant VCFs** — at least one of `short_vcf` (SNVs/Indels) or `struc_vcf` (structural variants). Joint-called multi-sample VCFs are expected.
+- **Variant VCFs** — at least one of `short_vcf` (SNVs/Indels) or `struc_vcf` (structural variants). Joint-called multi-sample VCFs are expected. Bgzipped VCF (`.vcf.gz`) or BCF (`.bcf`) are both accepted, with a `.tbi` or `.csi` index sitting alongside.
 - **Alignments TSV** — maps sample IDs to BAM/CRAM files for the IGV / SVPV / Samplot screenshots in slide decks.
 - **Gene list(s)** — one or more lists (local or web-based) that drive variant filtering.
 - **Pedigree** — required for familial analysis; omit for singletons.

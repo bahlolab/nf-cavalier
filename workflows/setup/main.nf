@@ -11,7 +11,9 @@ include { get_external_lists } from '../../functions/helpers.nf'
 /* ----------- processes ----------------*/
 include { INIT_CACHE       } from '../../modules/local/init_cache'
 include { STORE            } from '../../modules/local/store.nf'
-include { GET_SAMPLES      } from '../../modules/local/get_samples.nf'
+include { CHECK_SAMPLES    } from '../../modules/local/check_samples.nf'
+include { VCF_SAMPLES as SHORT_SAMPLES } from '../../modules/local/vcf_samples.nf'
+include { VCF_SAMPLES as STRUC_SAMPLES } from '../../modules/local/vcf_samples.nf'
 include { alignment_channel } from '../../functions/channels.nf'
 include { pedigree_channel } from '../../functions/channels.nf'
 
@@ -51,20 +53,26 @@ workflow SETUP {
                 .mix(Channel.value(['vcfanno', path(params.vcfanno_binary)]))
         )    
 
-        GET_SAMPLES(
+        def short_vcf_in = params.short_vcf ?: params.short_vcf_annotated
+        def struc_vcf_in = params.struc_vcf ?: params.struc_vcf_annotated
+
+        short_samples = short_vcf_in ? SHORT_SAMPLES(Channel.value(path(short_vcf_in))) : Channel.value([])
+        struc_samples = struc_vcf_in ? STRUC_SAMPLES(Channel.value(path(struc_vcf_in))) : Channel.value([])
+
+        CHECK_SAMPLES(
             path(params.alignments),
             params.ped ? path(params.ped) : [],
-            params.short_vcf ? path(params.short_vcf) : (params.short_vcf_annotated ? path(params.short_vcf_annotated) : []),
-            params.struc_vcf ? path(params.struc_vcf) : (params.struc_vcf_annotated ? path(params.struc_vcf_annotated) : [])
+            short_samples,
+            struc_samples
         )
 
-        GET_SAMPLES.out.warnings.readLines().flatten().map { log.warn(it)}
+        CHECK_SAMPLES.out.warnings.readLines().flatten().map { log.warn(it)}
 
-        pedigree_channel = pedigree_channel(GET_SAMPLES.out.ped)
+        pedigree_channel = pedigree_channel(CHECK_SAMPLES.out.ped)
 
-        alignment_channel = alignment_channel(GET_SAMPLES.out.alignments, GET_SAMPLES.out.ped)
+        alignment_channel = alignment_channel(CHECK_SAMPLES.out.alignments, CHECK_SAMPLES.out.ped)
 
-        check = GET_SAMPLES.out.check
+        check = CHECK_SAMPLES.out.check
     }
 
     emit:

@@ -59,7 +59,7 @@ if (in_ped == 'UNSET') {
 
 if (short_vcf != "UNSET") {
   
-  short_vcf_ids <- colnames(read_tsv(short_vcf, comment = "##", n_max = 0, show_col_types = FALSE))[-c(1:9)]
+  short_vcf_ids <- read_lines(short_vcf)
   message('\nℹ Found ', length(short_vcf_ids), ' samples in short  VCF')
   
 } else {
@@ -69,7 +69,7 @@ if (short_vcf != "UNSET") {
 
 if (struc_vcf != "UNSET") {
   
-  struc_vcf_ids <- colnames(read_tsv(struc_vcf, comment = "##", n_max = 0, show_col_types = FALSE))[-c(1:9)]
+  struc_vcf_ids <- read_lines(struc_vcf)
   message('\nℹ Found ', length(struc_vcf_ids), ' samples in struc  VCF')
   
 } else {
