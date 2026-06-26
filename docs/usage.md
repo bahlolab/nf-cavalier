@@ -36,6 +36,9 @@ Bahlolab users do not need to download annotation sources; use the preconfigured
 nextflow run /PATH/TO/nf-cavalier -resume -profile bahlolab
 ```
 
+## Test dataset
+An end-to-end example built from the public **1000G CEPH trio** (chr22) is provided in `tests/ceph_trio/`. See [test_dataset.md](test_dataset.md) for how to download the inputs and run it.
+
 ## Input files
 
 The pipeline takes four kinds of input:

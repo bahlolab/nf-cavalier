@@ -423,18 +423,25 @@ FILTER_SHORT_FMT <- function(VARIANTS) {
   
   MIN_DP <- getOption('FILTER_SHORT_MIN_DP')
   if (!is.null(MIN_DP)) {
-    stopifnot( 'DP' %in% colnames(VARIANTS) )
-    VARIANTS_OUT <-
-      VARIANTS_OUT %>% 
-      filter(do.call(pmin, unname(DP)) >= MIN_DP)
+    if ('DP' %in% colnames(VARIANTS)) {
+      VARIANTS_OUT <-
+        VARIANTS_OUT %>% 
+        filter(do.call(pmin, unname(DP)) >= MIN_DP)
+    } else {
+      warning('DP is missing, cannot apply filter')
+    }
+    
   }
   
   MIN_GQ <- getOption('FILTER_SHORT_MIN_GQ')
   if (!is.null(MIN_GQ)) {
-    stopifnot( 'GQ' %in% colnames(VARIANTS) )
-    VARIANTS_OUT <-
-      VARIANTS_OUT %>% 
-      filter(do.call(pmin, unname(GQ)) >= MIN_GQ)
+    if ('GQ' %in% colnames(VARIANTS)) {
+      VARIANTS_OUT <-
+        VARIANTS_OUT %>% 
+        filter(do.call(pmin, unname(GQ)) >= MIN_GQ)
+    } else {
+      warning('GQ is missing, cannot apply filter')
+    }
   }
   
   return(

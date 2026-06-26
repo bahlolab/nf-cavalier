@@ -58,6 +58,10 @@ Bahlolab users can skip step 2 and run with `-profile bahlolab`.
 
 See [docs/usage.md](docs/usage.md) for the full guide, including the input file formats (alignments TSV, gene lists, pedigree).
 
+## Test dataset
+
+An end-to-end example built from the public **1000G CEPH trio** (chr22) is provided in `tests/ceph_trio/`. See [docs/test_dataset.md](docs/test_dataset.md) for how to download the inputs and run it.
+
 ## Outputs
 Per-family slide decks (PPTX/PDF), candidate-variant CSVs, an interactive HTML variant browser, and QC reports — all under `${params.outdir}`. See [docs/output.md](docs/output.md) for the full layout.
 
@@ -66,6 +70,7 @@ Per-family slide decks (PPTX/PDF), candidate-variant CSVs, an interactive HTML v
 * [Annotations](docs/annotations.md) — `setup_anno` workflow and per-source download notes.
 * [Parameters](docs/parameters.md) — every parameter with defaults and descriptions.
 * [Outputs](docs/output.md) — what the pipeline writes and where.
+* [Test dataset](docs/test_dataset.md) — 1000G CEPH trio example (download + run).
 
 ## Credits
 nf-cavalier is developed and maintained at [WEHI](https://www.wehi.edu.au/) by:
