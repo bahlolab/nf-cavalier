@@ -41,6 +41,7 @@ workflow CAVALIER {
     versions
     somalier
     sce
+    ref_gene_gff
 
     main:
     /*
@@ -147,7 +148,8 @@ workflow CAVALIER {
         FILTER.out.struc_samplot.map { [it[0], it[1].text.trim()] }
             .join(samples_struc)
             .join(alignment_channel),
-        ref_fasta_channel()
+        ref_fasta_channel(),
+        ref_gene_gff
     )
 
     if (params.make_slides) {

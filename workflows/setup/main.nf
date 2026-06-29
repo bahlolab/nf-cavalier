@@ -10,6 +10,7 @@ include { get_external_lists } from '../../functions/helpers.nf'
 
 /* ----------- processes ----------------*/
 include { INIT_CACHE       } from '../../modules/local/init_cache'
+include { REF_GENE_GFF3    } from '../../modules/local/ref_gene_gff3.nf'
 include { STORE            } from '../../modules/local/store.nf'
 include { CHECK_SAMPLES    } from '../../modules/local/check_samples.nf'
 include { VCF_SAMPLES as SHORT_SAMPLES } from '../../modules/local/vcf_samples.nf'
@@ -75,6 +76,12 @@ workflow SETUP {
         check = CHECK_SAMPLES.out.check
     }
 
+    // samplot gene track: convert the RefSeq Select genePred (same file SVPV uses)
+    // to a bgzipped, tabix-indexed GFF3 once; [] when not configured / annotate_only
+    ref_gene_gff = (!params.annotate_only && params.ref_gene)
+        ? REF_GENE_GFF3(path(params.ref_gene)).first()
+        : []
+
     emit:
     cavalier_opts     = STORE.out.filter { it.name ==~ /.+\.json$/  }.first()
     lists             = STORE.out.filter { it.name ==~ /.+\.tsv$/   }.collect()
@@ -84,4 +91,5 @@ workflow SETUP {
     alignment_channel = alignment_channel
     versions          = INIT_CACHE.out.versions
     check             = check
+    ref_gene_gff      = ref_gene_gff
 }
