@@ -31,12 +31,15 @@ process VAR_BROWSER {
     path "sce.html"  , optional: true
 
     script:
+    sce_cmd = sce ? 
+        """Rscript -e "rmarkdown::render('$sce_rmd', params=list(input='$sce', prefix='sce'), output_file='sce.html')\"""" :
+        ""
     if (pairs)
     """
     Rscript -e "rmarkdown::render('$table_rmd', params=list(input='$pairs'   , prefix='somalier-pairs')   , output_file='somalier-pairs-tbl.html')"
     Rscript -e "rmarkdown::render('$table_rmd', params=list(input='$samples' , prefix='somalier-samples') , output_file='somalier-samples-tbl.html')"
     Rscript -e "rmarkdown::render('$table_rmd', params=list(input='$ancestry', prefix='somalier-ancestry'), output_file='somalier-ancestry-tbl.html')"
-    Rscript -e "rmarkdown::render('$sce_rmd', params=list(input='$sce', prefix='sce'), output_file='sce.html')"
+    $sce_cmd  
     Rscript -e "rmarkdown::render('$browser_rmd')"
     """
     else

@@ -32,8 +32,8 @@ process VEP {
     
     check_block = params.vep_check ?
         """
-        zcat $vcf_input | grep -v '^#' | wc -l > NIN.txt &
-        zcat $output    | grep -v '^#' | wc -l > NOUT.txt
+        bgzip -dc $vcf_input | grep -v '^#' | wc -l > NIN.txt &
+        bgzip -dc $output    | grep -v '^#' | wc -l > NOUT.txt
         wait; NIN=\$(<NIN.txt); NOUT=\$(<NOUT.txt)
         if [[ "\$NIN" != "\$NOUT" ]]; then
             echo "Error: Number of input variants (\$NIN) not equal to number of output variants (\$NOUT)"
@@ -43,7 +43,7 @@ process VEP {
         ''
 
     """
-    zcat $vcf_input \\
+    bgzip -dc $vcf_input \\
         | vep \\
             --input_file STDIN \\
             --format vcf \\
@@ -105,8 +105,8 @@ process VEP_STRUC {
     
     check_block = params.vep_check ?
         """
-        zcat $vcf_input | grep -v '^#' | wc -l > NIN.txt &
-        zcat $output    | grep -v '^#' | wc -l > NOUT.txt
+        bgzip -dc $vcf_input | grep -v '^#' | wc -l > NIN.txt &
+        bgzip -dc $output    | grep -v '^#' | wc -l > NOUT.txt
         wait; NIN=\$(<NIN.txt); NOUT=\$(<NOUT.txt)
         if [[ "\$NIN" != "\$NOUT" ]]; then
             echo "Error: Number of input variants (\$NIN) not equal to number of output variants (\$NOUT)"
@@ -116,7 +116,7 @@ process VEP_STRUC {
         ''
 
     """
-    zcat $vcf_input \\
+    bgzip -dc $vcf_input \\
         | vep \\
             --input_file STDIN \\
             --format vcf \\

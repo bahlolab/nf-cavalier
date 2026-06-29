@@ -39,25 +39,25 @@
                 "short_vcf": {
                     "type": "string",
                     "fa_icon": "fas fa-database",
-                    "description": "Input VCF for short variants (SNVs/Indels).",
+                    "description": "Input VCF for short variants (SNVs/Indels). Accepts bgzipped VCF (.vcf.gz) or BCF (.bcf), with a .tbi or .csi index alongside.",
                     "format": "file-path"
                 },
                 "struc_vcf": {
                     "type": "string",
                     "fa_icon": "fas fa-database",
-                    "description": "Input VCF for structural variants.",
+                    "description": "Input VCF for structural variants. Accepts bgzipped VCF (.vcf.gz) or BCF (.bcf), with a .tbi or .csi index alongside.",
                     "format": "file-path"
                 },
                 "short_vcf_annotated": {
                     "type": "string",
                     "fa_icon": "fas fa-database",
-                    "description": "Pre-annotated short variant VCF (skips annotation step).",
+                    "description": "Pre-annotated short variant VCF (skips annotation step). Accepts bgzipped VCF (.vcf.gz) or BCF (.bcf), with a .tbi or .csi index alongside.",
                     "format": "file-path"
                 },
                 "struc_vcf_annotated": {
                     "type": "string",
                     "fa_icon": "fas fa-database",
-                    "description": "Pre-annotated structural variant VCF (skips annotation step).",
+                    "description": "Pre-annotated structural variant VCF (skips annotation step). Accepts bgzipped VCF (.vcf.gz) or BCF (.bcf), with a .tbi or .csi index alongside.",
                     "format": "file-path"
                 }
             }
@@ -80,7 +80,17 @@
                 "qc_somalier": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Run somalier QC."
+                    "description": "Run somalier QC (relatedness, ancestry, contamination)."
+                },
+                "qc_sce_vcf": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Run sample-contamination-estimate (SCE) QC on the input short variant VCF."
+                },
+                "qc_sce_chr": {
+                    "type": "string",
+                    "default": "chr1,chr2,chr3",
+                    "description": "Comma-separated chromosomes to use for SCE QC."
                 },
                 "ref_fasta": {
                     "type": "string",
@@ -94,13 +104,19 @@
                 },
                 "cavalier_options": {
                     "type": "object",
-                    "description": "Additional options passed to the cavalier R package.",
+                    "description": "Additional options passed to the cavalier R package (e.g. read_only_cache_dir).",
                     "hidden": true
                 },
                 "somalier_dir": {
                     "type": "string",
                     "description": "Path to existing somalier reference data.",
                     "format": "directory-path"
+                },
+                "igv_ideogram": {
+                    "type": "string",
+                    "description": "Chromosome ideogram file in UCSC cytoBandIdeo format (.txt or .txt.gz). When set alongside ref_gene, igv-reports uses local files and avoids runtime downloads from UCSC during parallel runs.",
+                    "format": "file-path",
+                    "default": null
                 }
             }
         },
@@ -111,9 +127,9 @@
             "properties": {
                 "vep_cache": {
                     "type": "string",
-                    "default": "annotation/vep_cache",
-                    "description": "Path to VEP cache directory.",
-                    "format": "directory-path"
+                    "description": "Path to VEP cache directory. Required.",
+                    "format": "directory-path",
+                    "default": null
                 },
                 "vep_cache_ver": {
                     "type": "string",
@@ -127,33 +143,33 @@
                 },
                 "vep_spliceai_snv": {
                     "type": "string",
-                    "default": "annotation/spliceAI/1.3/spliceai_scores.raw.snv.hg38.vcf.gz",
-                    "description": "SpliceAI SNV VCF path (available from Illumina). Set to null to disable.",
-                    "format": "file-path"
+                    "description": "SpliceAI SNV VCF path (download from Illumina BaseSpace). Set to null to disable the plugin.",
+                    "format": "file-path",
+                    "default": null
                 },
                 "vep_spliceai_indel": {
                     "type": "string",
-                    "default": "annotation/spliceAI/1.3/spliceai_scores.raw.indel.hg38.vcf.gz",
-                    "description": "SpliceAI Indel VCF path (available from Illumina). Set to null to disable.",
-                    "format": "file-path"
+                    "description": "SpliceAI indel VCF path (download from Illumina BaseSpace). Set to null to disable the plugin.",
+                    "format": "file-path",
+                    "default": null
                 },
                 "vep_alphamissense": {
                     "type": "string",
-                    "default": "annotation/alphamissense/AlphaMissense_hg38.tsv.gz",
-                    "description": "AlphaMissense annotation TSV file. Set to null to disable.",
-                    "format": "file-path"
+                    "description": "AlphaMissense annotation TSV file. Set to null to disable the plugin.",
+                    "format": "file-path",
+                    "default": null
                 },
                 "vep_revel": {
                     "type": "string",
-                    "default": "annotation/REVEL/revel_1.3.hg38.vep.tsv.gz",
-                    "description": "REVEL annotation TSV file. Set to null to disable.",
-                    "format": "file-path"
+                    "description": "REVEL annotation TSV file. Set to null to disable the plugin.",
+                    "format": "file-path",
+                    "default": null
                 },
                 "vep_utr_annotator": {
                     "type": "string",
-                    "default": "annotation/UTRannotator/uORF_5UTR_GRCh38_PUBLIC.txt",
-                    "description": "UTRannotator file. Set to null to disable.",
-                    "format": "file-path"
+                    "description": "UTRannotator file. Set to null to disable the plugin.",
+                    "format": "file-path",
+                    "default": null
                 }
             }
         },
@@ -213,19 +229,17 @@
                 "short_vcf_filter": {
                     "type": "string",
                     "default": "PASS,.",
-                    "description": "Apply FILTER to input short variant VCF (comma-separated FILTER values to retain)."
+                    "description": "Pre-annotation FILTER values to retain from the input short variant VCF (comma-separated; applied before vcfanno/VEP)."
                 },
                 "short_info": {
                     "type": "array",
                     "default": ["AC", "AF", "AN"],
-                    "description": "INFO fields to keep from the short variant VCF.",
-                    "hidden": true
+                    "description": "INFO fields to keep from the input short variant VCF. Other INFO fields are discarded before annotation."
                 },
                 "short_format": {
                     "type": "array",
                     "default": ["GT", "GQ", "DP"],
-                    "description": "FORMAT fields to keep from the short variant VCF.",
-                    "hidden": true
+                    "description": "FORMAT fields to keep from the input short variant VCF. GT must be present."
                 },
                 "short_fill_tags": {
                     "type": "boolean",
@@ -235,7 +249,7 @@
                 "short_vcfanno_filter": {
                     "type": "string",
                     "default": "gnomad_AF<0.01 || gnomad_AF=\".\"",
-                    "description": "Filter expression applied after vcfanno annotation. Reduces VEP runtime by dropping common variants."
+                    "description": "bcftools-style expression applied after vcfanno annotation, before VEP. Used to drop common variants and reduce VEP runtime."
                 }
             }
         },
@@ -357,18 +371,18 @@
                 "FILTER_SHORT_VEP_MIN_IMPACT": {
                     "type": "string",
                     "default": "MODERATE",
-                    "description": "Minimum VEP impact to retain as TYPE='OTHER'. One of: MODIFIER, LOW, MODERATE, HIGH.",
+                    "description": "Retain variants with at least this VEP IMPACT as TYPE='OTHER' (requires FILTER_SHORT_OTHER=true). One of: MODIFIER, LOW, MODERATE, HIGH.",
                     "enum": ["MODIFIER", "LOW", "MODERATE", "HIGH"]
                 },
                 "FILTER_SHORT_VEP_CONSEQUENCES": {
                     "type": "string",
-                    "description": "Comma-separated VEP consequences to retain as TYPE='OTHER'. Set to null to disable.",
+                    "description": "Additionally retain variants matching any of these VEP Consequence terms as TYPE='OTHER' (comma-separated). Complements FILTER_SHORT_VEP_MIN_IMPACT. Set to null to disable.",
                     "default": null
                 },
                 "FILTER_SHORT_MAX_PROMOTERAI": {
                     "type": "number",
                     "default": -0.50,
-                    "description": "Maximum PromoterAI score for promoter variants. High precision: -0.5, balanced: -0.2, high recall: -0.1."
+                    "description": "Maximum PromoterAI score for TYPE='PROMOTER' variants (decreased expression direction; requires FILTER_SHORT_PROMOTER=true). Thresholds: -0.5 high precision, -0.2 balanced, -0.1 high recall."
                 }
             }
         },
@@ -380,19 +394,17 @@
                 "struc_vcf_filter": {
                     "type": "string",
                     "default": "PASS,.",
-                    "description": "Apply FILTER to input structural variant VCF (comma-separated FILTER values to retain)."
+                    "description": "Pre-annotation FILTER values to retain from the input structural variant VCF (comma-separated)."
                 },
                 "struc_info": {
                     "type": "array",
                     "default": ["AC", "AF", "AN", "SVTYPE", "SVLEN", "END"],
-                    "description": "INFO fields to keep from the structural variant VCF.",
-                    "hidden": true
+                    "description": "INFO fields to keep from the structural variant VCF. Other INFO fields are discarded before annotation."
                 },
                 "struc_format": {
                     "type": "array",
                     "default": ["GT"],
-                    "description": "FORMAT fields to keep from the structural variant VCF.",
-                    "hidden": true
+                    "description": "FORMAT fields to keep from the structural variant VCF. GT must be present."
                 },
                 "struc_fill_tags": {
                     "type": "boolean",
@@ -411,21 +423,15 @@
                 },
                 "svafdb": {
                     "type": "string",
-                    "default": "annotation/SVAFotate/SVAFotate_core_SV_popAFs.GRCh38.v4.1.bed.gz",
-                    "description": "SVAFotate database path for gnomAD v4.1 SV population frequencies.",
-                    "format": "file-path"
-                },
-                "pop_sv": {
-                    "type": "string",
-                    "default": "annotation/gnomAD/gnomad.v4.1.sv.sites.clean.vcf.gz",
-                    "description": "gnomAD v4.1 SV sites VCF file.",
-                    "format": "file-path"
+                    "description": "SVAFotate database path for gnomAD v4.1 SV population frequencies. Set to null to disable SV population annotation.",
+                    "format": "file-path",
+                    "default": null
                 },
                 "ref_gene": {
                     "type": "string",
-                    "default": "annotation/misc/ncbiRefSeqSelect.2026-01.tsv",
-                    "description": "NCBI RefSeq Select TSV file (from UCSC Table Browser).",
-                    "format": "file-path"
+                    "description": "NCBI RefSeq Select TSV file (from UCSC Table Browser). Set to null to disable RefSeq gene annotation.",
+                    "format": "file-path",
+                    "default": null
                 }
             }
         },
@@ -504,13 +510,11 @@
             "properties": {
                 "SLIDE_INFO_SHORT": {
                     "type": "object",
-                    "description": "Fields to include in short variant slides. Must contain a DEFAULT key; additional keys (e.g. MISSENSE, SPLICING, PROMOTER, OTHER) add type-specific columns.",
-                    "hidden": true
+                    "description": "Fields to include in short variant slides. Must contain a DEFAULT key (applied to all variants); additional keys (MISSENSE, SPLICING, PROMOTER, OTHER) append type-specific columns."
                 },
                 "SLIDE_INFO_STRUC": {
                     "type": "object",
-                    "description": "Fields to include in structural variant slides. Must contain a DEFAULT key.",
-                    "hidden": true
+                    "description": "Fields to include in structural variant slides. Must contain a DEFAULT key."
                 }
             }
         }

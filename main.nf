@@ -34,7 +34,8 @@ workflow {
             SETUP.out.check,
             SETUP.out.versions,
             QC.out.somalier,
-            QC.out.sce
+            QC.out.sce,
+            SETUP.out.ref_gene_gff
         )
     }
 

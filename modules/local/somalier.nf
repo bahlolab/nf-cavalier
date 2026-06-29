@@ -1,6 +1,6 @@
 
 process SOMALIER {
-    label 'C2M4T2'
+    label 'C2M4T4'
     label 'somalier'
     publishDir "${params.outdir}/qc/", mode: 'copy'
 

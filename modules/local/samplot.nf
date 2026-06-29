@@ -12,12 +12,15 @@ process SAMPLOT {
     input:
     tuple val(fam), val(sites), val(ids), path(bams), path(bais)
     tuple path(ref), path(ref_fai)
+    path ref_gff
 
     output:
     tuple val(fam), path("*.png")
 
     script:
     def cram_flag = bams.any { it.name.endsWith('.cram') } ? "-r $ref" : ""
+    def gff = ref_gff.find { it.name.endsWith('.gz') }
+    def transcript_flag = gff ? "-T $gff --transcript_filename 'RefSeq Select'" : ""
 """
 export MPLCONFIGDIR=\$PWD/mpl_tmp
 cat > sites <<< '${sites}'
@@ -38,6 +41,7 @@ cat > sites <<< '${sites}'
             -e \$END \\
             -t \$TYPE \\
             ${cram_flag} \\
+            ${transcript_flag} \\
             \$window_flag"
     done < sites
 ) | xargs -n 1 -P ${task.cpus} -I {} sh -c '{}'

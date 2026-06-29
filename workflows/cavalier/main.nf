@@ -41,6 +41,7 @@ workflow CAVALIER {
     versions
     somalier
     sce
+    ref_gene_gff
 
     main:
     /*
@@ -100,7 +101,9 @@ workflow CAVALIER {
             .join(SPLIT_VEP.out.vcf.filter {it[0] == 'SHORT' }.map { it[[1,2,3]] })
             .join(alignment_channel),
         ref_fasta_channel(),
-        path("$projectDir/misc/igv_report_mod.txt")
+        path("$projectDir/misc/igv_report_mod.txt"),
+        params.igv_ideogram ? path(params.igv_ideogram) : [],
+        params.ref_gene     ? path(params.ref_gene)     : []
     )
  
     IGV_TO_PNG(
@@ -145,7 +148,8 @@ workflow CAVALIER {
         FILTER.out.struc_samplot.map { [it[0], it[1].text.trim()] }
             .join(samples_struc)
             .join(alignment_channel),
-        ref_fasta_channel()
+        ref_fasta_channel(),
+        ref_gene_gff
     )
 
     if (params.make_slides) {
