@@ -1,5 +1,4 @@
 include { read_ped  } from './helpers'
-include { read_alignments } from './helpers'
 include { make_path } from './helpers'
 
 // helper functions to create input channels for processes
@@ -42,19 +41,6 @@ def fasta_channel(filename) {
 
 def ref_fasta_channel() {
     fasta_channel(params.ref_fasta)
-}
-
-def func_source_channel() {
-    def src_list = ["$projectDir/bin/snv_functions.R"] +
-        (
-            params.report_func_source ? 
-            (params.report_func_source.split(',')) :
-            []
-        )
-
-    Channel.value(
-        src_list.collect { file(it, checkIfExists: true).toAbsolutePath() }
-    )
 }
 
 def pedigree_channel(ped) {

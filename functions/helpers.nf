@@ -47,16 +47,6 @@ String date_ymd() {
     sdf.format(date)
 }
 
-def checkMode(mode) {
-    if (! mode instanceof String) {
-        throw new Exception("ERROR: Mode must be a string")
-    }
-    def valid_modes = ['short', 'sv']
-    if (! valid_modes.contains(mode)) {
-        throw new Exception("ERROR: Mode must be on of: '${valid_modes.join("', '")}'")
-    }
-}
-
 def read_ped(input) {
 
     def ped = read_tsv(input, ['fid', 'iid', 'pid', 'mid', 'sex', 'phe'])
@@ -85,10 +75,6 @@ def read_ped(input) {
     ped.findAll { fam_w_aff.contains(it.fid) }
 }
 
-def read_alignments() {
-    read_tsv(path(params.alignments), ['iid', 'alignment'])
-}
-
 def get_external_lists() {
     def lists_list = params.lists.split(',') as ArrayList
     def reg1 = /^(HP|PA[A-Z]+|HGNC|G4E|chr):.*/
@@ -108,46 +94,6 @@ def get_local_lists() {
     }
 }
 
-
-def list_channels() {
-
-    if (params.lists == null) {
-        error("params.lists must not be null")
-    }
-    def lists_list = params.lists.split(',') as ArrayList
-    def regex = /(HP|PA[A-Z]+|HGNC|G4E):.*/
-    def web = lists_list.findAll { it ==~ regex }
-    def local =  lists_list.findAll { !(it ==~ regex) }
-
-    [ 
-       (web ? Channel.fromList(web) : null),
-       (local ? Channel.fromList(local) : null) 
-    ]
-}
-
-def ref_fa_channel() {
-    def ref_fa = path(params.ref_fasta)
-    def ref_fai = path(params.ref_fasta + '.fai')
-    Channel.value([ref_fa, ref_fai])
-}
-
-def ref_data_channel() {
-    def ref_fa = path(params.ref_fasta)
-    def ref_fai = path(params.ref_fasta + '.fai')
-    def gaps = params.ref_hg38 ?
-        path("${workflow.projectDir}/data/hg38.gaps.bed.gz") :
-        path("${workflow.projectDir}/data/hg19.gaps.bed.gz")
-    def vep_cache = path(params.vep_cache)
-    Channel.value([ref_fa, ref_fai, gaps, vep_cache])
-}
-
-def get_variants_override() {
-    params.variants_override ? path(params.variants_override) : path("$projectDir/data/dummy/VARIANTS_OVERRIDE")
-}
-
-def ref_gene_channel() {
-    Channel.value([path(params.ref_gene)])
-}
 
 def get_fam_aff_un(pedigree_channel, bam_channel) {
 

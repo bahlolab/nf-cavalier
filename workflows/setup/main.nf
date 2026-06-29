@@ -1,6 +1,5 @@
 
 /* ----------- funtions ----------------*/
-include { list_channels      } from '../../functions/helpers'
 include { path               } from '../../functions/helpers'
 include { date_ymd           } from '../../functions/helpers'
 include { get_cavalier_opts  } from '../../functions/helpers'
