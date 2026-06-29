@@ -32,7 +32,7 @@ process VAR_BROWSER {
 
     script:
     sce_cmd = sce ? 
-        """Rscript -e "rmarkdown::render('$sce_rmd', params=list(input='$sce', prefix='sce'), output_file='sce.html')""" :
+        """Rscript -e "rmarkdown::render('$sce_rmd', params=list(input='$sce', prefix='sce'), output_file='sce.html')\"""" :
         ""
     if (pairs)
     """
