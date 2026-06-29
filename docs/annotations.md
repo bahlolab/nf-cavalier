@@ -62,3 +62,7 @@ To obtain the files: sign in at https://basespace.illumina.com, open https://bas
 * `spliceai_scores.raw.indel.hg38.vcf.gz`
 
 Generate tabix indexes locally (`tabix -p vcf <file.vcf.gz>` for each), then point the two `vep_spliceai_*` params at the resulting paths.
+
+---
+
+[Home](../README.md) · [Usage](usage.md) · **Annotations** · [Parameters](parameters.md) · [Output](output.md) · [Test Dataset](test_dataset.md)

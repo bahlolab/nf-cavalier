@@ -82,3 +82,7 @@ Under `output/`:
 - `variant_browser.html` — interactive variant browser
 - `qc/somalier/` — relatedness QC; should confirm the parent-offspring
   structure of the trio
+
+---
+
+[Home](../README.md) · [Usage](usage.md) · [Annotations](annotations.md) · [Parameters](parameters.md) · [Output](output.md) · **Test Dataset**

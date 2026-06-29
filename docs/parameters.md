@@ -164,3 +164,8 @@ Variants are reported if they pass the depth/quality and population/cohort frequ
 | `SLIDE_INFO_STRUC` | *(map)* | Fields to include in structural variant slides — see [usage.md#slide-info](usage.md#slide-info) |
 
 </details>
+
+---
+
+[Home](../README.md) · [Usage](usage.md) · [Annotations](annotations.md) · **Parameters** · [Output](output.md) · [Test Dataset](test_dataset.md)
+

@@ -1,7 +1,5 @@
 # Outputs
 
-> **Draft — please review.** This outline was derived from `publishDir` declarations in the pipeline modules. Edit as needed.
-
 All outputs land under `${params.outdir}` (default `output/`). The layout is:
 
 ```
@@ -55,3 +53,8 @@ These are the primary deliverables — one slide deck plus supporting results pe
 ## Miscellaneous
 
 - **`cavalier_options.*.json`** — the resolved options the [cavalier R package](https://github.com/bahlolab/cavalier) was invoked with. Kept for provenance.
+
+---
+
+[Home](../README.md) · [Usage](usage.md) · [Annotations](annotations.md) · [Parameters](parameters.md) · **Output** · [Test Dataset](test_dataset.md)
+

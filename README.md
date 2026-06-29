@@ -78,3 +78,6 @@ nf-cavalier is developed and maintained at [WEHI](https://www.wehi.edu.au/) by:
 * **Mark Bennett** — author, maintainer ([@mfbennett](https://github.com/mfbennett), [ORCID](https://orcid.org/0000-0002-3561-6804))
 * **Joshua Reid** — contributor ([@joshreid1](https://github.com/joshreid1), [ORCID](https://orcid.org/0000-0003-1925-7474))
 
+---
+
+**Home** · [Usage](docs/usage.md) · [Annotations](docs/annotations.md) · [Parameters](docs/parameters.md) · [Output](docs/output.md) · [Test Dataset](docs/test_dataset.md)
