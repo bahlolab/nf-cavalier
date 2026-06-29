@@ -45,6 +45,7 @@ def write_generated_config(resolved) {
         svafotate:     'svafdb',
         ref_gene:      'ref_gene',
         somalier:      'somalier_dir',
+        igv_ideogram:  'igv_ideogram',
     ]
     def resolved_map = resolved.collectEntries { name, p -> [(name): p] }
     def out = file(params.config_out)

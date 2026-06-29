@@ -38,6 +38,7 @@ These reference and annotation paths can be populated automatically by running t
 | `vcfanno_custom` | `null` | User-supplied vcfanno TOML config for additional custom annotations |
 | `svafdb` | `null` | SVAFotate database (gnomAD v4.1 SV population frequencies) — see [annotations.md#svafotate](annotations.md#svafotate) |
 | `ref_gene` | `null` | NCBI RefSeq Select (UCSC) TSV — [available here](https://genome.ucsc.edu/cgi-bin/hgTables?hgsid=3670191553_zqnYvk2x5XApGbDxqWZWmWYbAFNP&clade=mammal&org=&db=hg38&hgta_group=genes&hgta_track=refSeqComposite&hgta_table=ncbiRefSeqSelect&hgta_regionType=genome&position=&hgta_outputType=primaryTable&hgta_outFileName=ncbiRefSeqSelect.tsv) |
+| `igv_ideogram` | `null` | Chromosome ideogram file in UCSC cytoBandIdeo format (`.txt` or `.txt.gz`) for IGV reports. When set alongside `ref_gene`, avoids runtime downloads from UCSC during parallel igv-reports runs. |
 | `somalier_dir` | `null` | Somalier reference data directory (sites VCF, ancestry labels, 1KG bundle) |
 
 </details>

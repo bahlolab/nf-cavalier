@@ -100,7 +100,9 @@ workflow CAVALIER {
             .join(SPLIT_VEP.out.vcf.filter {it[0] == 'SHORT' }.map { it[[1,2,3]] })
             .join(alignment_channel),
         ref_fasta_channel(),
-        path("$projectDir/misc/igv_report_mod.txt")
+        path("$projectDir/misc/igv_report_mod.txt"),
+        params.igv_ideogram ? path(params.igv_ideogram) : [],
+        params.ref_gene     ? path(params.ref_gene)     : []
     )
  
     IGV_TO_PNG(

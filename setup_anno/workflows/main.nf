@@ -3,26 +3,26 @@ include { fasta_downloads          } from '../functions/setup_helpers'
 include { abs                      } from '../functions/setup_helpers'
 include { write_generated_config   } from '../functions/setup_helpers'
 
-include { FETCH as FETCH_FASTA               } from '../modules/fetch'
-include { FETCH as FETCH_ALPHAMISSENSE       } from '../modules/fetch'
-include { FETCH as FETCH_UTR_ANNOTATOR       } from '../modules/fetch'
-include { FETCH as FETCH_CADD_SNV            } from '../modules/fetch'
-include { FETCH as FETCH_CADD_SNV_TBI        } from '../modules/fetch'
-include { FETCH as FETCH_CADD_INDEL          } from '../modules/fetch'
-include { FETCH as FETCH_CADD_INDEL_TBI      } from '../modules/fetch'
-include { FETCH as FETCH_SVAFOTATE           } from '../modules/fetch'
-include { FETCH as FETCH_SOMALIER_SITES      } from '../modules/fetch'
-include { FETCH as FETCH_SOMALIER_LABELS     } from '../modules/fetch'
-include { FETCH as FETCH_SOMALIER_1KG        } from '../modules/fetch'
-
-include { TABIX as TABIX_ALPHAMISSENSE       } from '../modules/tabix'
-include { TABIX as TABIX_SVAFOTATE           } from '../modules/tabix'
-
+include { FETCH as FETCH_FASTA           } from '../modules/fetch'
+include { FETCH as FETCH_ALPHAMISSENSE   } from '../modules/fetch'
+include { FETCH as FETCH_UTR_ANNOTATOR   } from '../modules/fetch'
+include { FETCH as FETCH_CADD_SNV        } from '../modules/fetch'
+include { FETCH as FETCH_CADD_SNV_TBI    } from '../modules/fetch'
+include { FETCH as FETCH_CADD_INDEL      } from '../modules/fetch'
+include { FETCH as FETCH_CADD_INDEL_TBI  } from '../modules/fetch'
+include { FETCH as FETCH_SVAFOTATE       } from '../modules/fetch'
+include { FETCH as FETCH_SOMALIER_SITES  } from '../modules/fetch'
+include { FETCH as FETCH_SOMALIER_LABELS } from '../modules/fetch'
+include { FETCH as FETCH_SOMALIER_1KG    } from '../modules/fetch'
+include { FETCH as FETCH_IGV_IDEOGRAM    } from '../modules/fetch'
+include { TABIX as TABIX_ALPHAMISSENSE   } from '../modules/tabix'
+include { TABIX as TABIX_SVAFOTATE       } from '../modules/tabix'
 include { VEP_CACHE                } from '../modules/vep_cache'
 include { GNOMAD                   } from '../modules/gnomad'
 include { CLINVAR                  } from '../modules/clinvar'
 include { REF_GENE                 } from '../modules/ref_gene'
 include { REVEL                    } from '../modules/revel'
+
 
 workflow SETUP_ANNO {
 
@@ -107,6 +107,13 @@ workflow SETUP_ANNO {
 
     if (!params.skip_ref_gene) {
         ch_assets = ch_assets.mix(REF_GENE(params.url_ref_gene).map { f -> tuple('ref_gene', f) })
+    }
+
+    if (!params.skip_igv_ideogram) {
+        ch_assets = ch_assets.mix(
+            FETCH_IGV_IDEOGRAM(tuple('igv', params.url_igv_ideogram, 'hg38.cytoBandIdeo.txt.gz'))
+                .map { f -> tuple('igv_ideogram', f) }
+        )
     }
 
     if (!params.skip_somalier) {

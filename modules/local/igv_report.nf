@@ -14,18 +14,22 @@ process IGV_REPORT {
     tuple val(fam), val(sites), path(vcf), path(tbi), val(ids), path(bams), path(bais) // bams can be BAM or CRAM, bais can be .bai or .crai
     tuple path(ref), path(ref_fai)
     path igv_report_mod
+    path ideogram       // [] when not configured; falls back to --genome hg38
+    path ref_gene_file, stageAs: 'RefSeq'  // [] when not configured; staged name ensures refgene format detection
 
     output:
     tuple val(fam), path("${fam}.igv_report.html")  , emit: combined
     tuple val(fam), path("${fam}.igv_report.*.html"), emit: individual
 
     script:
+    def genome_arg    = ideogram.size() == 0 ? "--genome hg38" : "--ideogram $ideogram"
+    def ref_gene = ref_gene_file.size() == 0 ? ""         : " ${ref_gene_file}"
     // paralellise cmds with xargs
     def cmds = [
-        "create_report sites.bed --genome hg38 --flanking 250 --fasta $ref --tracks ${fam}.vcf.gz ${bams.join(' ')} --output ${fam}.igv_report.html"
+        "create_report sites.bed $genome_arg --flanking 250 --fasta $ref --tracks ${fam}.vcf.gz ${bams.join(' ')}${ref_gene} --output ${fam}.igv_report.html"
     ] +
     [ids, bams].transpose().collect{ id, bam ->
-        "create_report sites.bed --genome hg38 --standalone --flanking 100 --fasta $ref --tracks $bam --output ${fam}.igv_report.${id}.html"
+        "create_report sites.bed $genome_arg --standalone --flanking 100 --fasta $ref --tracks ${bam}${ref_gene} --output ${fam}.igv_report.${id}.html"
     }
 """
 ln -s $vcf ${fam}.vcf.gz
@@ -39,5 +43,6 @@ cat cmds | xargs -I {} -P $task.cpus /bin/bash -c "{}"
 
 sed -i "/<head>/r $igv_report_mod" "${fam}.igv_report.html"
 sed -i 's/const tableJson/var tableJson/; s/const sessionDictionary/var sessionDictionary/' "${fam}.igv_report.html"
+
 """
 }

@@ -111,6 +111,12 @@
                     "type": "string",
                     "description": "Path to existing somalier reference data.",
                     "format": "directory-path"
+                },
+                "igv_ideogram": {
+                    "type": "string",
+                    "description": "Chromosome ideogram file in UCSC cytoBandIdeo format (.txt or .txt.gz). When set alongside ref_gene, igv-reports uses local files and avoids runtime downloads from UCSC during parallel runs.",
+                    "format": "file-path",
+                    "default": null
                 }
             }
         },
