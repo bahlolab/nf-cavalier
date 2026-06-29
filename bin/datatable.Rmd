@@ -1,0 +1,84 @@
+---
+pagetitle: "Table"
+params:
+  input: "input.tsv"
+  prefix: "table"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(DT)
+
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+```{r table, echo=FALSE}
+df <-
+  read_tsv(params$input) %>%
+  rename_with(~ str_replace(., "^#", ""))
+
+if (all(c('sample_a', 'sample_b', 'relatedness', 'expected_relatedness') %in% colnames(df))) {
+  df <-
+    select(df, sample_a, sample_b, relatedness, expected_relatedness, everything()) %>%
+    mutate(
+      delta_relatedness =
+        if_else(
+          expected_relatedness != -1,
+          abs(expected_relatedness - relatedness),
+          NA_real_
+        ),
+        .after = expected_relatedness
+    )
+}
+
+datatable(
+  df %>% mutate(across(where(~ is.character(.) && n_distinct(.) <= 10), as.factor)),
+  escape = FALSE, selection = "none", rownames = FALSE,
+  filter = 'top', extensions = "Buttons",
+  options = list(
+    pageLength = 10, dom = 'Blfrtip', autoWidth = FALSE,
+    deferRender = TRUE, orderClasses = FALSE,
+    buttons = list(
+      list(extend = 'colvis', columns = 0:(ncol(df) - 1)),
+      list(extend = 'csv',   filename = params$prefix),
+      list(extend = 'excel', filename = params$prefix)
+    )
+  )
+)
+```
+
+<style>
+body { font-family: 'Segoe UI', system-ui, sans-serif; padding-top: 7px; }
+.container, .main-container { width: 100% !important; max-width: 100% !important; }
+
+/* ── DataTable ── */
+table.dataTable tbody tr       { transition: background 0.12s; }
+table.dataTable tbody tr:hover td { background-color: #f0faf0 !important; }
+table.dataTable thead th       { background-color: #f6f6f6; border-bottom: 2px solid #49A942 !important; }
+table.dataTable td, table.dataTable th {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+table.dataTable thead td {
+  overflow: visible;
+}
+
+/* ── ColVis / Buttons ── */
+.dt-buttons .dt-button {
+  background: #2372B9 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 5px 14px !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
+  transition: background 0.15s !important;
+}
+.dt-buttons .dt-button:hover { background: #1a5899 !important; }
+</style>

@@ -1,6 +1,43 @@
 # Changelog: nf-cavalier
 <!--- https://keepachangelog.com/en/1.0.0/ --->
 
+## [26.06.0](https://github.com/bahlolab/nf-cavalier/releases/tag/26.06.0) - 29 Jun 2026
+Major rewrite ("nf-cavalier v2"): the flat `nf/` process layout is replaced by a
+modular DSL2 pipeline, with joint short/structural variant analysis, automated
+reference-data setup, and an interactive HTML variant browser.
+### Added
+- Interactive HTML variant browser (`variant_browser.html`): filterable short- and
+  structural-variant tables with per-variant detail panels, embedded IGV/SVPV/
+  samplot/UCSC views, and live lookups to HGNC, NCBI Gene/PubMed, ClinVar,
+  gnomAD, PanelApp (Australia + GEL), HPO and All of Us, with an API health bar
+- QC workflow: somalier relatedness + ancestry (1KG reference) and SCE-VCF sample
+  contamination estimation, surfaced as variant-browser tabs and standalone reports
+- Automated reference-data setup workflow (`setup_anno/`) that downloads and
+  preprocesses all GRCh38 resources (reference FASTA, VEP cache, gnomAD 4.1, CADD,
+  ClinVar, REVEL, AlphaMissense, UTRannotator, SVAFotate, RefSeq Select, IGV
+  ideogram, somalier) and writes a populated `nextflow.config`
+- VEP plugins: AlphaMissense, SpliceAI (SNV + indel), REVEL, UTRannotator, and
+  optional promoterAI; vcfanno annotation with gnomAD, CADD (SNV + indel) and ClinVar
+- Structural-variant path: SVAFotate gnomAD-SV frequencies, VEP consequences, and
+  samplot visualisation with a RefSeq Select gene track (alongside SVPV)
+- Input support for BCF VCFs and `.csi` indexes, and CRAM alignments (`.crai`)
+- Genes4Epilepsy (`G4E:`) gene lists
+- `params.annotate_only` to stop after annotation
+- End-to-end 1000G CEPH trio (chr22) test dataset under `tests/ceph_trio/`
+- `docs/` documentation set (usage, annotations, parameters, output, test dataset)
+  and a rewritten README with a mermaid pipeline diagram
+- `bahlolab` profile in `profiles.config`
+### Changed
+- Restructured the pipeline into DSL2 workflows (SETUP → QC → ANNOTATE → CAVALIER),
+  subworkflows (`short`, `struc`), single-purpose modules and reusable functions
+- Short and structural inputs are now separate parameters (`short_vcf`/`struc_vcf`),
+  alignments are supplied via an alignments TSV, and annotation reference data is
+  configured per source
+- VEP bumped to v115; intermediate variants gathered as indexed BCF
+- Audited and restructured `nextflow.config` / `nextflow_schema.json`; moved
+  Bahlolab-specific paths into the `bahlolab` profile
+- IGV reports use local ideogram/refgene files instead of fetching from UCSC at runtime
+
 ## [24.06.0](https://github.com/bahlolab/nf-cavalier/releases/tag/24.06.0) - 27 Jun 2024
 ### Added
 - `params.cavalier_options` to pass arbitrary options to cavalier package

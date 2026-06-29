@@ -1,86 +1,83 @@
 # nf-cavalier
 
-Nextflow Pipeline for singleton and family based candidate variant prioritisation based on gene lists using the Cavalier R package. This pipeline is a work in progress.
+Nextflow pipeline for singleton and family-based candidate variant reporting based on gene lists. Variants are reported in CSV, PowerPoint and PDF format. Supports joint SNV/Indel and Structural Variant analysis.
 
-## Installation
-* Clone this repositoty
+## Pipeline summary
+* Variants are annotated with vcfanno, SVAFotate and VEP.
+* Variants are filtered by family based on inheritance, population frequency, predicted impact and gene lists.
+* Candidate variants are reported along with IGV and Structural variant visualisations.
 
-## Usage
-* Create and navigate to run working directory
-* Create configuration file in run directory named `nextflow.config`:
-  ```Nextflow
-    params {
-      // output directory
-      outdir = 'output'
-      
-      // inputs
-      snp_vcf = 'my_cohort.SNPs.vcf.gz'
-      sv_vcf = 'my_cohort.SVs.vcf.gz'
-      ped = 'families.ped'
-      bams = 'bams.tsv'
-      lists = 'my_list_file.tsv,HP:0001250'
-      
-      // filtering
-      maf_dom = 0.0001
-      maf_rec = 0.01
-      maf_comp_het = 0.01
-      maf_de_novo = 0.0001
-      max_cohort_af = 1.0
-      max_cohort_ac = 'Inf'
-      min_impact = 'LOW'
-      exclude_benign_missense = false
-      include_sv_csv = true
-  
-      // reference config
-      ref_hg38 = true
-      ref_fasta = '/PATH/TO/GRCh38.fasta'
-      pop_sv = '/PATH/TO/gnomad-sv.vcf.gz'
-      ref_gene = '/PATH/TO/RefSeqGene.hg38.UCSC.txt'
-      vep_cache = '/PATH/T0/vep-cache'
-      vep_cache_ver = '104'
-    }
-    ```
-* Note: Bahlo Lab members should use this [config](https://github.com/bahlolab/nextflow-config/blob/master/nf-cavalier/milton.config) as a starting point.
+```mermaid
+graph LR
+    inputs["<b>Inputs</b>\nVCFs, Pedigree,\nGene Lists, BAMs"] --> qc["<b>QC</b>\nRelatedness, ancestry\n& contamination"]
+    inputs --> short["<b>Annotate Short Variants</b>\ngnomAD, CADD, ClinVar\nVEP, SpliceAI, REVEL,\nAlphaMissense"]
+    inputs --> struc["<b>Annotate Structural Variants</b>\ngnomAD SV, VEP"]
 
-* **Params**  
-  * `outdir` - Output directory
-  * `snp_vcf` - (Optional) Input VCF file with SNP variant calls for all samples.
-  * `sv_vcf` - (Optional) Input VCF file with SV variant calls for all samples.
-  * `ped` - A [Ped format file](https://gatk.broadinstitute.org/hc/en-us/articles/360035531972-PED-Pedigree-format) describing familial relationships, with 1/2 coding for unaffected/affected phenotypes (missing phenotype not supported).
-  * `bams` - TSV file with first column containing individual ID, second column containing path to indexed BAM file (no header row/  column names).
-  * `lists` - Comma separated list of gene lists to use for filtering. This may be a local TSV file, e.g. 'my_list_file.tsv' or a web based gene list, e.g. [PAA:289](https://panelapp.agha.umccr.org/panels/289/).
-    * **Local TSV file**  
-      * Path to a TSV file with mandatory named column. The file should have at least one of the following column names:
-     `ensembl_gene_id`, `hgnc_id`, `entrez_id` or `symbol`. Optional column names are `list_id`, `list_name`, `list_version` and `inheritance`. Note that all gene IDs are ultimately converted to Ensembl Gene IDs using HGNC to match VEP annotation.
-     
-         e.g.
+    short --> filter["<b>Filter</b>\nFrequency, inheritance,\nimpact & gene list"]
+    struc --> filter
+    filter --> vis["<b>Visualise</b>\nIGV, SVPV & Samplot"]
+    vis --> report["<b>Report</b>\nPer-family slide decks,\ninteractive variant browser"]
+    qc --> report
 
-          ```
-          list_id	list_name	list_version	symbol	inheritance
-          PAA:202	Genetic Epilepsy	1.26	AARS1	AR
-          PAA:202	Genetic Epilepsy	1.26	ABAT	AR
-          PAA:202	Genetic Epilepsy	1.26	ABCA2	AR
-          ```
-          
-          or:
-          
-            list_id	list_name	list_version	ensembl_gene_id	inheritance
-            PAA:202	Genetic Epilepsy	1.26	ENSG00000090861	AR
-            PAA:202	Genetic Epilepsy	1.26	ENSG00000183044	AR
-            PAA:202	Genetic Epilepsy	1.26	ENSG00000107331	AR
-              
-    * **Web List** - Cavalier will automatically retrieve the latest version of these web lists
-      * **PanelApp**: PanelApp Australia or PanelApp Genomics England lists may be specified with "PAA:" or "PAE:" prefix respectively. e.g. [PAA:289](https://panelapp.agha.umccr.org/panels/289/)
-      * **HPO**: Human phenotype ontology terms may be specified with the "HP:" prefex, e.g. [HP:0001250](https://hpo.jax.org/browse/term/HP:0001250)
-      * **Genes4Epilepsy**: [Genes4Epilepsy](https://github.com/bahlolab/Genes4Epilepsy) lists may be specified with the "G4E:" prexif, e.g. "G4E:ALL" for All Epilepsy genes, or "G4E:Focal" for Focal epilepsy genes only
-      * **HGNC**: Gene subsets by locus group can be extracted from HGNC, for example "HGNC:protein-coding" will give a list of all protein coding genes
-  * `exclude_benign_missense` - exclude missense variants that are predicted/annotated as benign by all of Sift, 
-  Polyphen and ClinVar. Missing annotations are ignored.
-  * `include_sv_csv` - Include "coding_sequence_variant" SVs regardless of VEP Impact.
+    report --> outputs["<b>Outputs</b>\nCandidate CSVs,\nPer-family Slides,\nHTML variant browser"]
 
-* First run:  
-`nextflow run /PATH/TO/nf-cavalier`
-* Resume run:  
-`nextflow run /PATH/TO/nf-cavalier -resume`
-* Recommended to run workflow in a `screen` session
-  
+    classDef default fill:#f3e5f5,stroke:#7b1fa2,color:#000
+    classDef io fill:#e1f5fe,stroke:#0288d1,color:#000
+    class inputs,outputs io
+```
+
+## Quick start
+
+Requires [Nextflow](https://www.nextflow.io/) ≥ 24.04 and a container runtime (Docker / Singularity / Apptainer).
+
+```bash
+# 1. Clone the pipeline
+git clone https://github.com/bahlolab/nf-cavalier.git
+
+# 2. Set up annotation reference data (writes a populated nextflow.config)
+nextflow run nf-cavalier/setup_anno/setup_anno.nf \
+    --resource_dir ./cavalier_refdata \
+    --config_out   ./nextflow.config
+
+# 3. Append your inputs to nextflow.config
+cat >> nextflow.config <<'EOF'
+params {
+    alignments = 'alignments.tsv'
+    ped        = 'family.ped'           // omit for singletons
+    short_vcf  = 'cohort.snv.vcf.gz'
+    struc_vcf  = 'cohort.sv.vcf.gz'
+    lists      = 'PAA:202,my_genes.tsv'
+}
+EOF
+
+# 4. Run the pipeline
+nextflow run nf-cavalier -resume
+```
+
+Bahlolab users can skip step 2 and run with `-profile bahlolab`.
+
+See [docs/usage.md](docs/usage.md) for the full guide, including the input file formats (alignments TSV, gene lists, pedigree).
+
+## Test dataset
+
+An end-to-end example built from the public **1000G CEPH trio** (chr22) is provided in `tests/ceph_trio/`. See [docs/test_dataset.md](docs/test_dataset.md) for how to download the inputs and run it.
+
+## Outputs
+Per-family slide decks (PPTX/PDF), candidate-variant CSVs, an interactive HTML variant browser, and QC reports — all under `${params.outdir}`. See [docs/output.md](docs/output.md) for the full layout.
+
+## Documentation
+* [Usage](docs/usage.md) — prerequisites, install, running the pipeline, and input file formats (alignments TSV, gene lists, pedigree, slide info).
+* [Annotations](docs/annotations.md) — `setup_anno` workflow and per-source download notes.
+* [Parameters](docs/parameters.md) — every parameter with defaults and descriptions.
+* [Outputs](docs/output.md) — what the pipeline writes and where.
+* [Test dataset](docs/test_dataset.md) — 1000G CEPH trio example (download + run).
+
+## Credits
+nf-cavalier is developed and maintained at [WEHI](https://www.wehi.edu.au/) by:
+* **Jacob Munro** — author, maintainer ([@jemunro](https://github.com/jemunro), [ORCID](https://orcid.org/0000-0002-2751-0989))
+* **Mark Bennett** — author, maintainer ([@mfbennett](https://github.com/mfbennett), [ORCID](https://orcid.org/0000-0002-3561-6804))
+* **Joshua Reid** — contributor ([@joshreid1](https://github.com/joshreid1), [ORCID](https://orcid.org/0000-0003-1925-7474))
+
+---
+
+**Home** · [Usage](docs/usage.md) · [Annotations](docs/annotations.md) · [Parameters](docs/parameters.md) · [Output](docs/output.md) · [Test Dataset](docs/test_dataset.md)

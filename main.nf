@@ -1,71 +1,42 @@
 #!/usr/bin/env nextflow
-nextflow.enable.dsl=2
-/*
-TODO:
-    - Add download URLs for reference files (similar to PLASTER) as default to simplify configuration
- */
-//imput params
-params.outdir = 'output'
-params.snp_vcf = ''
-params.snp_caller = 'GATK'
-params.fill_tags = false
-params.remove_fields = 'INFO/CSQ'
-params.sv_vcf = ''
-params.ped = ''
-params.bams = ''
-params.lists = ''
-params.chunk_size = 200000
-params.sv_chunk_size = 10000
 
-// filter params
-params.maf_dom = 0.0001
-params.maf_de_novo = 0.0001
-params.maf_rec = 0.01
-params.maf_comp_het = 0.01
-params.max_cohort_af = 1.0
-params.max_cohort_ac = 'Inf'
-params.min_impact = 'MODERATE'
-params.exclude_benign_missense = true
-params.include_sv_csv = true
+include { validate_params } from './functions/validate'
 
-// ref params
-params.ref_fasta = ''
-params.ref_hg38 = true
-params.vep_cache = ''
-params.vep_cache_ver = ''
-params.vep_assembly = params.ref_hg38 ? 'GRCh38' : 'GRCh37'
-params.pop_sv = ''
-params.ref_gene = ''
-
-
-// map additional options for cavalier R pacakge
-params.cache_dir = 'cavalier_cache'
-params.database_mode = 'fallback' // one of 'latest', 'fallback' or 'offline'
-params.cavalier_options = [:]
-
-// exec params
-params.sv_types = 'DEL,DUP,INS,INV,BND'
-params.sv_type_match = [DEL: ['DEL'], DUP: ['CNV', 'DUP']]
-params.no_slides = false // skip making slides in cavalier
-
-include { vcf_channel; families_channel } from './nf/functions'
-include { GetSamples } from './nf/GetSamples'
-include { CheckInputs } from './nf/CheckInputs'
-include { CleanAndChunk } from './nf/CleanAndChunk'
-include { Annotate } from './nf/Annotate'
-include { Report } from './nf/Report'
+include { SETUP    } from './workflows/setup'
+include { ANNOTATE } from './workflows/annotate'
+include { QC       } from './workflows/qc'
+include { CAVALIER } from './workflows/cavalier'
 
 workflow {
 
-    vcfs = vcf_channel()
+    validate_params()
 
-    vcf_samples = GetSamples(vcfs)
+    SETUP()
 
-    ann_vcf = vcf_samples |
-        CheckInputs |
-        combine(vcfs, by: 0) |
-        CleanAndChunk |
-        Annotate |
-        combine(families_channel(vcf_samples), by: 0) |
-        Report
+    QC(
+        SETUP.out.check
+    )
+
+    ANNOTATE(
+        SETUP.out.vcfanno_binary,
+        SETUP.out.check
+    )
+
+    if (!params.annotate_only) {
+        CAVALIER(
+            SETUP.out.gene_set,
+            SETUP.out.lists,
+            SETUP.out.cavalier_opts,
+            ANNOTATE.out.short_vcf,
+            ANNOTATE.out.struc_vcf,
+            SETUP.out.pedigree_channel,
+            SETUP.out.alignment_channel,
+            SETUP.out.check,
+            SETUP.out.versions,
+            QC.out.somalier,
+            QC.out.sce,
+            SETUP.out.ref_gene_gff
+        )
+    }
+
 }
