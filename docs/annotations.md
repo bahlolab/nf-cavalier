@@ -65,4 +65,4 @@ Generate tabix indexes locally (`tabix -p vcf <file.vcf.gz>` for each), then poi
 
 ---
 
-[Home](../README.md) · [Usage](usage.md) · **Annotations** · [Parameters](parameters.md) · [Output](output.md) · [Test Dataset](test_dataset.md)
+> [Home](../README.md) &ensp;·&ensp; [Usage](usage.md) &ensp;·&ensp; **Annotations** &ensp;·&ensp; [Parameters](parameters.md) &ensp;·&ensp; [Output](output.md) &ensp;·&ensp; [Test Dataset](test_dataset.md)

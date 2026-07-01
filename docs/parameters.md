@@ -87,7 +87,7 @@ These reference and annotation paths can be populated automatically by running t
 <details>
 <summary><b>Short Variant Filters</b></summary>
 
-Variants are reported if they pass the depth/quality and population/cohort frequency filters **and** match one of the enabled variant classes (`FILTER_SHORT_LOF`, `_MISSENSE`, `_SPLICING`, `_PROMOTER`, `_OTHER`). The `TYPE='OTHER'` class is controlled by `FILTER_SHORT_VEP_MIN_IMPACT` and, optionally, the additional `FILTER_SHORT_VEP_CONSEQUENCES` list. `FILTER_SHORT_MIN_CADD_PP` and `FILTER_SHORT_MIN_SPLICEAI_PP` force-include high-scoring variants regardless of class.
+Variants are reported if they pass the depth/quality and population/cohort frequency filters **and** match one of the enabled variant classes (`FILTER_SHORT_LOF`, `_MISSENSE`, `_SPLICING`, `_PROMOTER`, `_OTHER`). The `TYPE='OTHER'` class is controlled by `FILTER_SHORT_VEP_MIN_IMPACT` and, optionally, the additional `FILTER_SHORT_VEP_CONSEQUENCES` list. `FILTER_SHORT_MIN_CADD_PP` and `FILTER_SHORT_MIN_SPLICEAI_PP` force-include high-scoring variants regardless of class. Any filter can be disabled by setting it to `null`. See [usage.md#filtering-and-prioritisation](usage.md#filtering-and-prioritisation) for an explanation of the dominant/recessive frequency regimes and how to tune them to your disease.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -95,10 +95,10 @@ Variants are reported if they pass the depth/quality and population/cohort frequ
 | `FILTER_SHORT_MIN_GQ` | `10` | Minimum genotype quality |
 | `FILTER_SHORT_POP_DOM_MAX_AF` | `0.0001` | Max population (gnomAD) AF for dominant variants |
 | `FILTER_SHORT_POP_REC_MAX_AF` | `0.01` | Max population (gnomAD) AF for recessive variants |
-| `FILTER_SHORT_POP_DOM_MAX_AC` | `10` | Max population (gnomAD) AC for dominant variants |
-| `FILTER_SHORT_POP_REC_MAX_AC` | `1000` | Max population (gnomAD) AC for recessive variants |
-| `FILTER_SHORT_POP_DOM_MAX_HOM` | `1` | Max population (gnomAD) homozygotes for dominant variants |
-| `FILTER_SHORT_POP_REC_MAX_HOM` | `10` | Max population (gnomAD) homozygotes for recessive variants |
+| `FILTER_SHORT_POP_DOM_MAX_AC` | `null` | Max population (gnomAD) AC for dominant variants (`null` = disabled) |
+| `FILTER_SHORT_POP_REC_MAX_AC` | `null` | Max population (gnomAD) AC for recessive variants (`null` = disabled) |
+| `FILTER_SHORT_POP_DOM_MAX_HOM` | `null` | Max population (gnomAD) homozygotes for dominant variants (`null` = disabled) |
+| `FILTER_SHORT_POP_REC_MAX_HOM` | `null` | Max population (gnomAD) homozygotes for recessive variants (`null` = disabled) |
 | `FILTER_SHORT_COH_DOM_MAX_AF` | `null` | Max cohort AF for dominant variants |
 | `FILTER_SHORT_COH_REC_MAX_AF` | `null` | Max cohort AF for recessive variants |
 | `FILTER_SHORT_COH_DOM_MAX_AC` | `null` | Max cohort AC for dominant variants |
@@ -136,14 +136,16 @@ Variants are reported if they pass the depth/quality and population/cohort frequ
 <details>
 <summary><b>Structural Variant Filters</b></summary>
 
+Structural variants follow the same dominant/recessive × population/cohort frequency model as short variants — see [usage.md#filtering-and-prioritisation](usage.md#filtering-and-prioritisation). Any filter can be disabled by setting it to `null`.
+
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `FILTER_STRUC_POP_DOM_MAX_AF` | `0.0001` | Max population AF for dominant SVs |
 | `FILTER_STRUC_POP_REC_MAX_AF` | `0.01` | Max population AF for recessive SVs |
 | `FILTER_STRUC_POP_DOM_MAX_HOM` | `null` | Max population homozygotes for dominant SVs |
 | `FILTER_STRUC_POP_REC_MAX_HOM` | `null` | Max population homozygotes for recessive SVs |
-| `FILTER_STRUC_COH_DOM_MAX_AF` | `0.01` | Max cohort AF for dominant SVs |
-| `FILTER_STRUC_COH_REC_MAX_AF` | `0.01` | Max cohort AF for recessive SVs |
+| `FILTER_STRUC_COH_DOM_MAX_AF` | `null` | Max cohort AF for dominant SVs (`null` = disabled) |
+| `FILTER_STRUC_COH_REC_MAX_AF` | `null` | Max cohort AF for recessive SVs (`null` = disabled) |
 | `FILTER_STRUC_COH_DOM_MAX_AC` | `null` | Max cohort AC for dominant SVs |
 | `FILTER_STRUC_COH_REC_MAX_AC` | `null` | Max cohort AC for recessive SVs |
 | `FILTER_STRUC_SVTYPES` | `'DEL,DUP,INS,INV'` | SV types to retain (BND is currently excluded upstream due to a VEP issue) |
@@ -167,5 +169,5 @@ Variants are reported if they pass the depth/quality and population/cohort frequ
 
 ---
 
-[Home](../README.md) · [Usage](usage.md) · [Annotations](annotations.md) · **Parameters** · [Output](output.md) · [Test Dataset](test_dataset.md)
+> [Home](../README.md) &ensp;·&ensp; [Usage](usage.md) &ensp;·&ensp; [Annotations](annotations.md) &ensp;·&ensp; **Parameters** &ensp;·&ensp; [Output](output.md) &ensp;·&ensp; [Test Dataset](test_dataset.md)
 

@@ -80,4 +80,4 @@ nf-cavalier is developed and maintained at [WEHI](https://www.wehi.edu.au/) by:
 
 ---
 
-**Home** · [Usage](docs/usage.md) · [Annotations](docs/annotations.md) · [Parameters](docs/parameters.md) · [Output](docs/output.md) · [Test Dataset](docs/test_dataset.md)
+> **Home** &ensp;·&ensp; [Usage](docs/usage.md) &ensp;·&ensp; [Annotations](docs/annotations.md) &ensp;·&ensp; [Parameters](docs/parameters.md) &ensp;·&ensp; [Output](docs/output.md) &ensp;·&ensp; [Test Dataset](docs/test_dataset.md)

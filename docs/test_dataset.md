@@ -85,4 +85,4 @@ Under `output/`:
 
 ---
 
-[Home](../README.md) · [Usage](usage.md) · [Annotations](annotations.md) · [Parameters](parameters.md) · [Output](output.md) · **Test Dataset**
+> [Home](../README.md) &ensp;·&ensp; [Usage](usage.md) &ensp;·&ensp; [Annotations](annotations.md) &ensp;·&ensp; [Parameters](parameters.md) &ensp;·&ensp; [Output](output.md) &ensp;·&ensp; **Test Dataset**

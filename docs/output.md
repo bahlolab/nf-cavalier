@@ -56,5 +56,5 @@ These are the primary deliverables — one slide deck plus supporting results pe
 
 ---
 
-[Home](../README.md) · [Usage](usage.md) · [Annotations](annotations.md) · [Parameters](parameters.md) · **Output** · [Test Dataset](test_dataset.md)
+> [Home](../README.md) &ensp;·&ensp; [Usage](usage.md) &ensp;·&ensp; [Annotations](annotations.md) &ensp;·&ensp; [Parameters](parameters.md) &ensp;·&ensp; **Output** &ensp;·&ensp; [Test Dataset](test_dataset.md)
 

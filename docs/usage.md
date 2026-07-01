@@ -166,6 +166,79 @@ params {
 }
 ```
 
----
+## Filtering and Prioritisation
 
-[Home](../README.md) · **Usage** · [Annotations](annotations.md) · [Parameters](parameters.md) · [Output](output.md) · [Test Dataset](test_dataset.md)
+This section explains *how* and *why* variants are filtered, so you can tune the thresholds to your disease of interest. The full parameter list with defaults is in [parameters.md](parameters.md#short-variant-filters); the explanation below covers the model behind the frequency filters in particular.
+
+### How variants are filtered
+
+For each family (or singleton), a candidate variant must pass **all** of the following to be reported:
+
+1. **Variant class** — for short variants, an enabled class (`LOF`, `MISSENSE`, `SPLICING`, `PROMOTER`, `OTHER`) determined from VEP impact/consequence and, where relevant, CADD / SpliceAI / PromoterAI scores. For structural variants, an allowed SV type (`FILTER_STRUC_SVTYPES`) and VEP impact/consequence (`FILTER_STRUC_VEP_MIN_IMPACT`, `FILTER_STRUC_VEP_CONSEQUENCES`); SVs longer than `FILTER_STRUC_LARGE_LENGTH` are reported automatically.
+2. **Gene list** — it must fall in a gene from one of your `lists`.
+3. **Inheritance and frequency** — it must segregate with the phenotype **and** be rare enough under the frequency thresholds for its inheritance mode (see below).
+4. **Genotype quality** (short variants only) — each contributing genotype must meet `FILTER_SHORT_MIN_DP` (depth, default `5`) and `FILTER_SHORT_MIN_GQ` (genotype quality, default `10`). Structural-variant calls have no depth/quality filter.
+
+Variant class and gene-list membership decide *whether a variant is the kind we care about*; the frequency filters decide *whether it is rare enough to be plausibly causal*. The frequency step is where disease-specific tuning matters most.
+
+### Dominant vs recessive frequency regimes
+
+nf-cavalier does **not** apply a single frequency cut-off. Each variant is first assigned an observed inheritance mode from how it segregates with affected/unaffected status, and that mode selects which frequency thresholds apply:
+
+- **dominant** — affected individuals are heterozygous (HET) and unaffected individuals are reference (REF).
+- **recessive** — affected individuals are homozygous (HOM) and no unaffected individual is HOM.
+
+For a **singleton** (one affected sample, no pedigree) this reduces to zygosity: a **heterozygous** call is evaluated under the **dominant** thresholds, and a **homozygous** call under the **recessive** thresholds.
+
+The two regimes exist because the expected population frequency of a causal allele differs by inheritance mode — a dominant disease allele should be very rare in the population, whereas a recessive allele can be carried (heterozygously) at appreciable frequency. Accordingly the defaults are much stricter for dominant variants:
+
+- `FILTER_SHORT_POP_DOM_MAX_AF = 0.0001` (dominant)
+- `FILTER_SHORT_POP_REC_MAX_AF = 0.01` (recessive)
+
+A heterozygous variant that is too common for the dominant threshold but still within the recessive threshold is **not discarded** — it is reclassified as a `compound` candidate and retained for compound-heterozygous analysis (it is reported only if a second qualifying hit is found in the same gene).
+
+### Population vs cohort frequency
+
+Two independent frequency sources are checked, each with its own dominant/recessive thresholds:
+
+- **Population (`POP`)** — gnomAD allele frequencies. `POP` AF uses the higher of gnomAD AF and the 95% filtering allele frequency (FAF95); `POP` also exposes allele count (`AC`) and homozygote count (`HOM`, gnomAD `nhomalt`). Use these to exclude variants that are too common in the general population.
+- **Cohort (`COH`)** — frequencies computed from *your own* joint-called VCF (`AF`, `AC`). Use these to suppress variants that are common **within your cohort** — typically recurrent sequencing artefacts or shared common variants — which population databases may not flag.
+
+Setting any threshold to `null` disables that particular check (it never removes a variant).
+
+### Key frequency parameters and defaults
+
+Short-variant frequency filters (structural-variant equivalents use the `FILTER_STRUC_*` prefix):
+
+| Parameter | Default | Applies to | Effect |
+|-----------|---------|------------|--------|
+| `FILTER_SHORT_POP_DOM_MAX_AF` | `0.0001` | dominant (HET) | Max gnomAD AF/FAF95 |
+| `FILTER_SHORT_POP_REC_MAX_AF` | `0.01` | recessive (HOM) | Max gnomAD AF/FAF95 |
+| `FILTER_SHORT_POP_DOM_MAX_AC` | `null` (off) | dominant | Max gnomAD allele count |
+| `FILTER_SHORT_POP_REC_MAX_AC` | `null` (off) | recessive | Max gnomAD allele count |
+| `FILTER_SHORT_POP_DOM_MAX_HOM` | `null` (off) | dominant | Max gnomAD homozygote count |
+| `FILTER_SHORT_POP_REC_MAX_HOM` | `null` (off) | recessive | Max gnomAD homozygote count |
+| `FILTER_SHORT_COH_DOM_MAX_AF` | `null` (off) | dominant | Max cohort AF |
+| `FILTER_SHORT_COH_REC_MAX_AF` | `null` (off) | recessive | Max cohort AF |
+| `FILTER_SHORT_COH_DOM_MAX_AC` | `null` (off) | dominant | Max cohort allele count |
+| `FILTER_SHORT_COH_REC_MAX_AC` | `null` (off) | recessive | Max cohort allele count |
+
+By default only the population **AF** filters are active; the AC, HOM and cohort filters are off (`null`) and can be enabled as needed. Structural variants follow the same `DOM`/`REC` × `POP`/`COH` pattern (`FILTER_STRUC_POP_DOM_MAX_AF = 0.0001`, `FILTER_STRUC_POP_REC_MAX_AF = 0.01`; population AC is not used for SVs).
+
+### Choosing thresholds for your disease
+
+The population AF thresholds effectively cap the **maximum credible frequency of a disease allele** — as a rule of thumb it should not exceed the disease prevalence, adjusted for penetrance and inheritance mode. Adjust the defaults when your disease does not fit them:
+
+- **Rare, highly penetrant dominant disorder** — tighten `POP_DOM_MAX_AF` below the `0.0001` default to reduce false positives; setting `POP_DOM_MAX_HOM = 0` (no population homozygotes) is a strong additional filter.
+- **Recessive disorder with a common carrier allele** (e.g. founder variants) — raise `POP_REC_MAX_AF` above `0.01` to admit the real allele, optionally bounding by `POP_REC_MAX_HOM` so alleles seen homozygous in healthy individuals are still removed.
+- **Recurrent cohort artefacts** — enable the `COH_*` filters to drop variants common within your own cohort even when gnomAD does not flag them.
+
+### Variants retained regardless of frequency
+
+- **ClinVar pathogenic** — variants whose ClinVar `CLNSIG` matches `FILTER_SHORT_CLINVAR_KEEP_PAT` (default matches "pathogenic") are retained even if they exceed the frequency thresholds, provided they still segregate with the phenotype. `FILTER_SHORT_CLINVAR_DISC_PAT` (default "benign") discards matching benign classifications.
+- **CADD / SpliceAI / PromoterAI** scores influence only the **variant class** assignment (`FILTER_SHORT_MIN_CADD_PP`, `FILTER_SHORT_MIN_SPLICEAI_PP`, `FILTER_SHORT_MAX_PROMOTERAI`); they do **not** exempt a variant from the frequency or segregation filters.
+
+See [parameters.md](parameters.md#short-variant-filters) for the complete list of filter parameters, including the variant-class flags and ClinVar settings.
+
+---
+> [Home](../README.md) &ensp;·&ensp; **Usage** &ensp;·&ensp; [Annotations](annotations.md) &ensp;·&ensp; [Parameters](parameters.md) &ensp;·&ensp; [Output](output.md) &ensp;·&ensp; [Test Dataset](test_dataset.md)
