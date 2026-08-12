@@ -1,5 +1,7 @@
 # nf-cavalier
 
+[![bioRxiv](https://img.shields.io/badge/bioRxiv-2026.08.06.743410-B31B1B)](https://doi.org/10.64898/2026.08.06.743410)
+
 Nextflow pipeline for singleton and family-based candidate variant reporting based on gene lists. Variants are reported in CSV, PowerPoint and PDF format. Supports joint SNV/Indel and Structural Variant analysis.
 
 ## Pipeline summary
@@ -77,6 +79,11 @@ nf-cavalier is developed and maintained at [WEHI](https://www.wehi.edu.au/) by:
 * **Jacob Munro** — author, maintainer ([@jemunro](https://github.com/jemunro), [ORCID](https://orcid.org/0000-0002-2751-0989))
 * **Mark Bennett** — author, maintainer ([@mfbennett](https://github.com/mfbennett), [ORCID](https://orcid.org/0000-0002-3561-6804))
 * **Joshua Reid** — contributor ([@joshreid1](https://github.com/joshreid1), [ORCID](https://orcid.org/0000-0003-1925-7474))
+
+## Citation
+If you use nf-cavalier, please cite:
+
+Munro JE, Reid J, Bahlo ME, Bennett MF. **nf-cavalier: A Nextflow Pipeline for Rare Disease Variant Prioritization and Reporting.** *bioRxiv* 2026.08.06.743410; doi: [10.64898/2026.08.06.743410](https://doi.org/10.64898/2026.08.06.743410)
 
 ---
 
