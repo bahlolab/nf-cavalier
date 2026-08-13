@@ -60,19 +60,20 @@ Variant prioritisation pipelines are subject to substantial churn -- new annotat
 
 : Comparison of **nf-cavalier** to leading variant prioritisation tools. \label{tab:comparison}
 
-| **Tool** | **nf-cavalier** | **MOLGENIS-VIP** [@Maassen2025-dt] | **seqr** [@Pais2022-mn] | **Scout** [@Stranneheim2021-uh] |
+| **Tool** | **nf-cavalier** | **MOLGENIS-VIP** | **seqr** | **Scout** |
 |---|---|---|---|---|
 | **Publication year** | 2026 | 2025 | 2022 | 2021 |
 | **Required Preprocessing** | SV and SNV/Indel variant calling | None | GATK4 SNV/Indel calling | nf-core/raredisease variant calling |
 | **Dependencies** | Nextflow and container engine | Nextflow and container engine | Kubernetes, Live Server | Docker, Live Server |
 | **Variant types** | SNV/Indel, SV | SNV/Indel, SV, STR | SNV/indel, SV^†^ | SNV/indel, SV, STR |
 | **QC** | Somalier -relate and -ancestry, Sample contamination | None | None | None |
-| **Gene lists supported** | PanelApp, HPO, genomic region, HGNC locus, Genes4Epilepsy [@Oliver2023-gv], custom | HPO^‡^ | PanelApp, HPO, genomic region, custom | PanelApp, HPO, custom |
+| **Gene lists supported** | PanelApp, HPO, genomic region, HGNC locus, Genes4Epilepsy^§^, custom | HPO^‡^ | PanelApp, HPO, genomic region, custom | PanelApp, HPO, custom |
 | **Filtering** | Nextflow parameters, R-script | JSON Decision tree, HTML GUI | Web GUI | Web GUI |
 | **Outputs** | Static HTML, PowerPoint slides | Static HTML | Web server | Web server |
 
 ^†^ SV support in seqr is currently limited to in-house users at the Broad Institute, as the SV calling and loading pipelines have not been made available at the time of writing.
 ^‡^ VIP does not filter output based on gene panels, but can annotate HPO terms for user-level filtering.
+^§^ [@Oliver2023-gv]
 
 The pipeline has been implemented in Nextflow, leveraging Nextflow's framework for reproducibility, containerisation, and ability to run on local machines, high-performance computing clusters, and cloud environments. The pipeline consists of three modules: annotation, QC, and reporting (\autoref{fig:overview}). We also include a one-time setup pipeline that automates the download of required reference datasets, as well as a script to download a demonstration dataset based on the 1000 Genomes CEPH trio for testing and evaluation.
 
