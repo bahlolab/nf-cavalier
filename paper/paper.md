@@ -60,25 +60,16 @@ Variant prioritisation pipelines are subject to substantial churn -- new annotat
 
 : Comparison of **nf-cavalier** to leading variant prioritisation tools. \label{tab:comparison}
 
-+----------------------------+---------------------------------------------+-------------------------------+---------------------------------------+-------------------------------------+
-| **Tool**                   | **nf-cavalier**                             | **MOLGENIS-VIP** [@Maassen2025-dt] | **seqr** [@Pais2022-mn]          | **Scout** [@Stranneheim2021-uh]     |
-+============================+=============================================+===============================+=======================================+=====================================+
-| **Publication year**       | 2026                                        | 2025                          | 2022                                  | 2021                                |
-+----------------------------+---------------------------------------------+-------------------------------+---------------------------------------+-------------------------------------+
-| **Required Preprocessing** | SV and SNV/Indel variant calling            | None                          | GATK4 SNV/Indel calling               | nf-core/raredisease variant calling |
-+----------------------------+---------------------------------------------+-------------------------------+---------------------------------------+-------------------------------------+
-| **Dependencies**           | Nextflow and container engine               | Nextflow and container engine | Kubernetes, Live Server               | Docker, Live Server                 |
-+----------------------------+---------------------------------------------+-------------------------------+---------------------------------------+-------------------------------------+
-| **Variant types**          | SNV/Indel, SV                               | SNV/Indel, SV, STR            | SNV/indel, SV^†^                      | SNV/indel, SV, STR                  |
-+----------------------------+---------------------------------------------+-------------------------------+---------------------------------------+-------------------------------------+
-| **QC**                     | Somalier -relate and -ancestry, Sample contamination | None                  | None                                  | None                                |
-+----------------------------+---------------------------------------------+-------------------------------+---------------------------------------+-------------------------------------+
-| **Gene lists supported**   | PanelApp, HPO, genomic region, HGNC locus, Genes4Epilepsy [@Oliver2023-gv], custom | HPO^‡^ | PanelApp, HPO, genomic region, custom | PanelApp, HPO, custom               |
-+----------------------------+---------------------------------------------+-------------------------------+---------------------------------------+-------------------------------------+
-| **Filtering**              | Nextflow parameters, R-script               | JSON Decision tree, HTML GUI  | Web GUI                               | Web GUI                             |
-+----------------------------+---------------------------------------------+-------------------------------+---------------------------------------+-------------------------------------+
-| **Outputs**                | Static HTML, PowerPoint slides              | Static HTML                   | Web server                            | Web server                          |
-+----------------------------+---------------------------------------------+-------------------------------+---------------------------------------+-------------------------------------+
+| **Tool** | **nf-cavalier** | **MOLGENIS-VIP** [@Maassen2025-dt] | **seqr** [@Pais2022-mn] | **Scout** [@Stranneheim2021-uh] |
+|---|---|---|---|---|
+| **Publication year** | 2026 | 2025 | 2022 | 2021 |
+| **Required Preprocessing** | SV and SNV/Indel variant calling | None | GATK4 SNV/Indel calling | nf-core/raredisease variant calling |
+| **Dependencies** | Nextflow and container engine | Nextflow and container engine | Kubernetes, Live Server | Docker, Live Server |
+| **Variant types** | SNV/Indel, SV | SNV/Indel, SV, STR | SNV/indel, SV^†^ | SNV/indel, SV, STR |
+| **QC** | Somalier -relate and -ancestry, Sample contamination | None | None | None |
+| **Gene lists supported** | PanelApp, HPO, genomic region, HGNC locus, Genes4Epilepsy [@Oliver2023-gv], custom | HPO^‡^ | PanelApp, HPO, genomic region, custom | PanelApp, HPO, custom |
+| **Filtering** | Nextflow parameters, R-script | JSON Decision tree, HTML GUI | Web GUI | Web GUI |
+| **Outputs** | Static HTML, PowerPoint slides | Static HTML | Web server | Web server |
 
 ^†^ SV support in seqr is currently limited to in-house users at the Broad Institute, as the SV calling and loading pipelines have not been made available at the time of writing.
 ^‡^ VIP does not filter output based on gene panels, but can annotate HPO terms for user-level filtering.
@@ -87,7 +78,7 @@ The pipeline has been implemented in Nextflow, leveraging Nextflow's framework f
 
 Annotation takes cohort VCFs (short and/or structural variants) as input, splits them into shards for parallel processing, and performs variant normalisation and annotation with standard tools bcftools [@Danecek2021-pf], vcfanno [@Pedersen2016-pe], VEP [@McLaren2016-go], and SVAFotate [@Nicholas2022-js]. Sharding improves scalability, reducing runtime from days to hours depending on available compute resources. vcfanno is employed to rapidly incorporate pre-calculated variant-specific metrics for short variants, including population allele frequencies from gnomAD v4.1, known pathogenicity classifications from ClinVar, predicted deleteriousness scores from CADD, as well as arbitrary user-specified annotation sources. VEP is used to add gene-level consequence predictions as well as annotations that depend on transcript models, including REVEL [@Ioannidis2016-uo], AlphaMissense [@Cheng2023-ns], and SpliceAI [@Jaganathan2019-jo] scores. For structural variants, SVAFotate is used to transfer gnomAD v4.1 SV frequencies using an overlap-based matching approach.
 
-![Schematic overview of **nf-cavalier** pipeline.\label{fig:overview}](Figure1.png){ width=90% }
+![Schematic overview of **nf-cavalier** pipeline.\label{fig:overview}](Figure1.png)
 
 Filtering operates on a per-family basis and applies user-configurable filters for genes of interest (derived from PanelApp, HPO, genomic regions, or custom inputs), genic consequence (e.g. VEP impact or consequences), and deleteriousness predictions. By default, all reported ClinVar pathogenic/likely pathogenic variants in a gene of interest are retained, and all reported ClinVar benign or likely benign variants are excluded. Variants are then matched to inheritance models -- all affected family members must carry dominant variants; recessive variants must be present only in a homozygous state in affected family members; and compound heterozygous pairs must be present together only in affected family members. Allele frequency filters are then applied depending on inheritance model, with the default dominant threshold set at 1/10,000 and the default recessive threshold set at 1/100.
 
@@ -95,13 +86,13 @@ The reporting stage visualises candidate variants using igv-reports, SVPV, or Sa
 
 In addition to the annotation, filtering, and reporting stages, the pipeline includes a QC workflow that runs somalier [@Pedersen2020-er] and SCE-VCF [@Lu2023-zz] to assess relatedness, sex concordance, genetic ancestry, and contamination, enabling users to identify problematic samples and verify pedigree relationships.
 
-![Example **nf-cavalier** variant PowerPoint output slides for a research participant with compound heterozygous pathogenic variants in the gene CNTNAP2. A) Summary slide detailing counts after each level of SNV/Indel filtering was applied, resulting in four candidate variants for this example analysis. B) PowerPoint output slide with details on a stop-gain variant in CNTNAP2, known to be pathogenic in ClinVar. Blue text represents hyperlinks to external resources. C) PowerPoint output slide detailing a 138 kb deletion affecting CNTNAP2, flagged by **nf-cavalier** as potentially compound heterozygous. D) nf-cavalier PowerPoint slide embedding an SVPV plot of the structural variant for inspection and QC. This case has been published in Munro et al. [@Munro2026-zo].\label{fig:slides}](Figure2.png){ width=90% }
+![Example **nf-cavalier** variant PowerPoint output slides for a research participant with compound heterozygous pathogenic variants in the gene CNTNAP2. A) Summary slide detailing counts after each level of SNV/Indel filtering was applied, resulting in four candidate variants for this example analysis. B) PowerPoint output slide with details on a stop-gain variant in CNTNAP2, known to be pathogenic in ClinVar. Blue text represents hyperlinks to external resources. C) PowerPoint output slide detailing a 138 kb deletion affecting CNTNAP2, flagged by **nf-cavalier** as potentially compound heterozygous. D) nf-cavalier PowerPoint slide embedding an SVPV plot of the structural variant for inspection and QC. This case has been published in Munro et al. [@Munro2026-zo].\label{fig:slides}](Figure2.png)
 
 # Research impact statement
 
 **nf-cavalier** has been used in several studies investigating known and novel causes of rare disease in large-scale genome and exome sequencing cohorts, benefiting from extensive real-world application testing over five years. These include the Austin Health Adult Undiagnosed Disease Program (AHA-UDP), the first adult-focused undiagnosed disease program in Australia, which resulted in diagnoses for 16/50 (32%) participating families [@Wallis2024-pb]. More recently, **nf-cavalier** has been used to search for molecular causes in a large cohort of individuals with developmental and epileptic encephalopathy (DEE), resulting in diagnoses for 37/242 (15%) of participants, including nine structural variants [@Munro2026-zo], and in the identification of a complex structural variant in FBRSL1 associated with a severe DEE [@Cohen-Vig2026-qa]. Furthermore, **nf-cavalier** was used to assist in the landmark discovery of an intronic repeat expansion in FGF14 as the most common cause of late-onset cerebellar ataxia, where it was used to exclude alternative explanations for pathogenicity [@Rafehi2023-yo]. The CAVALIER R package, a precursor to the current Nextflow implementation, was also used similarly to assist with the discovery of the RFC1 repeat expansion causing cerebellar ataxia with neuropathy and bilateral vestibular areflexia syndrome (CANVAS) [@Rafehi2019-oi].
 
-![The CAVALIER interactive variant browser interface. The upper panel allows filtering of short and structural variants using customisable columns and includes tabs for QC data and run metadata. The lower panel enables exploration of variants and genes, with igv-reports (pictured) and other external APIs embedded.\label{fig:browser}](Figure3.png){ width=90% }
+![The CAVALIER interactive variant browser interface. The upper panel allows filtering of short and structural variants using customisable columns and includes tabs for QC data and run metadata. The lower panel enables exploration of variants and genes, with igv-reports (pictured) and other external APIs embedded.\label{fig:browser}](Figure3.png)
 
 # AI usage disclosure
 
