@@ -52,12 +52,6 @@ Several software tools are commonly used for the individual tasks carried out in
 
 Comparable rare disease variant prioritization tools include seqr [@Pais2022-mn], Scout [@Stranneheim2021-uh], and MOLGENIS-VIP [@Maassen2025-dt] (\autoref{tab:comparison}). VIP is the closest comparator to **nf-cavalier**, as both are Nextflow-based and produce static HTML reports without requiring a server or database backend, suiting institutional HPC environments where persistent services may be unsupported. In contrast, seqr and Scout require continuously running web services, creating ongoing infrastructure and maintenance requirements. The recommended seqr deployment uses Kubernetes to orchestrate several databases, the seqr application, and a variant-loading service; Scout uses Docker services for MongoDB and its web application. Many institutional HPC environments restrict Docker and Kubernetes deployments.
 
-**nf-cavalier** and VIP serve different use cases. VIP targets production-oriented clinical variant classification, encoding ACMG-derived evidence criteria as a configurable JSON decision tree. **nf-cavalier** instead supports exploratory, tunable research prioritization without automated classification, identifying candidates for downstream review and interpretation. Filtering criteria such as allele frequency, genotype quality, consequence class, and gene-list membership are exposed as independently configurable, named parameters. For example, `FILTER_SHORT_POP_DOM_MAX_AF = 0.0001` sets the maximum gnomAD allele frequency for dominantly inherited short variants. This transparently represents the filtering strategy, allowing researchers to inspect and iteratively refine individual criteria.
-
-# Software design
-
-Variant prioritization pipelines are subject to substantial churn -- new annotation sources become available, new pathogenicity-prediction methods are released, and new classes of variation are recognised. **nf-cavalier** is designed to incorporate new resources with minimal effort. Its use of the VCF specification provides compatibility with diverse upstream callers and annotation resources, making it particularly suitable for research pipelines at the cutting edge of variant discovery.
-
 : Comparison of **nf-cavalier** to alternative variant prioritization tools. \label{tab:comparison}
 
 | **Tool** | **nf-cavalier** | **MOLGENIS-VIP** | **seqr** | **Scout** |
@@ -74,6 +68,12 @@ Variant prioritization pipelines are subject to substantial churn -- new annotat
 ^†^ SV support in seqr is currently limited to in-house users at the Broad Institute, as the SV calling and loading pipelines have not been made available at the time of writing.
 ^‡^ VIP does not filter output based on gene panels, but can annotate HPO terms for user-level filtering.
 ^§^ [@Oliver2023-gv]
+
+**nf-cavalier** and VIP serve different use cases. VIP targets production-oriented clinical variant classification, encoding ACMG-derived evidence criteria as a configurable JSON decision tree. **nf-cavalier** instead supports exploratory, tunable research prioritization without automated classification, identifying candidates for downstream review and interpretation. Filtering criteria such as allele frequency, genotype quality, consequence class, and gene-list membership are exposed as independently configurable, named parameters. For example, `FILTER_SHORT_POP_DOM_MAX_AF = 0.0001` sets the maximum gnomAD allele frequency for dominantly inherited short variants. This transparently represents the filtering strategy, allowing researchers to inspect and iteratively refine individual criteria.
+
+# Software design
+
+Variant prioritization pipelines are subject to substantial churn -- new annotation sources become available, new pathogenicity-prediction methods are released, and new classes of variation are recognised. **nf-cavalier** is designed to incorporate new resources with minimal effort. Its use of the VCF specification provides compatibility with diverse upstream callers and annotation resources, making it particularly suitable for research pipelines at the cutting edge of variant discovery.
 
 The Nextflow implementation supports reproducible, containerised execution on local machines, HPC clusters, and cloud environments. The pipeline consists of three modules: annotation, QC, and reporting (\autoref{fig:overview}). Also included is a one-time setup pipeline that downloads the required reference data, and a script to download a test dataset based on the 1000 Genomes CEPH trio.
 
