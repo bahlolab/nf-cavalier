@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a problem with the pipeline
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened
+      description: Include the command/config used and any error output
+    validations:
+      required: true
+
+  - type: input
+    id: nextflow_version
+    attributes:
+      label: Nextflow version
+    validations:
+      required: true
+
+  - type: input
+    id: pipeline_version
+    attributes:
+      label: Pipeline version / commit
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Executor, container engine
+    validations:
+      required: false
